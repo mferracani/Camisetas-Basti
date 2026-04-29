@@ -1,11 +1,11 @@
 # Project State
 
 ## Fase actual
-frontend
+backend
 
 ## Gate status
 - [x] Gate 1: PRD aprobado
-- [ ] Gate 2: UX aprobado
+- [x] Gate 2: UX aprobado
 - [ ] Gate 3: Build completo
 
 ## Decisiones tomadas
@@ -19,8 +19,8 @@ frontend
 
 ## Handoffs pendientes
 - [x] product-manager → ux-designer: PRD aprobado, pasar a UX Spec
-- [ ] ux-designer → backend-designer: falta UX spec
-- [ ] backend-designer → frontend-engineer: falta backend-spec
+- [x] ux-designer → backend-designer: UX spec generado y aprobado
+- [ ] backend-designer → swiftui-engineer: falta backend-spec
 
 ## Open questions para el usuario
 - (ninguna, todas cerradas en PRD sección 10)
