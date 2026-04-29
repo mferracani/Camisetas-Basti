@@ -6,7 +6,10 @@ frontend
 ## Gate status
 - [x] Gate 1: PRD aprobado
 - [x] Gate 2: UX aprobado
-- [ ] Gate 3: Build completo
+- [x] Gate 3: Build completo (código Swift)
+- [x] Security Review: Aprobado (COPPA/Kids compliant)
+- [x] QA Checklist: Generado
+- [ ] Assets finales: Faltan fuentes, sonidos, icono, launch screen
 
 ## Decisiones tomadas
 - 2026-04-29 Product Manager: Stack = Swift nativo (SwiftUI) para iOS + macOS. No Next.js/Supabase.
@@ -20,11 +23,16 @@ frontend
 - 2026-04-29 Local Data Designer: AVAudioPlayer con categoría .ambient (respeta silencio).
 - 2026-04-29 Local Data Designer: ContentVersion = 1 para migración futura.
 
-## Handoffs pendientes
+## Handoffs completados
 - [x] product-manager → ux-designer: PRD aprobado, pasar a UX Spec
 - [x] ux-designer → backend-designer: UX spec generado y aprobado
 - [x] backend-designer → swiftui-engineer: backend-spec generado y aprobado
-- [ ] swiftui-engineer → security-reviewer: falta implementación completa
+- [x] swiftui-engineer → security-reviewer: código Swift implementado
+- [x] security-reviewer → qa-engineer: revisión aprobada (COPPA compliant)
+- [x] qa-engineer → usuario/assets: checklist generado, tests escritos
+
+## Bloqueante actual
+Faltan assets binarios (fuentes, sonidos, icono) y proyecto Xcode. Ver `ASSETS.md`.
 
 ## Open questions para el usuario
 - (ninguna, todas cerradas en PRD sección 10)

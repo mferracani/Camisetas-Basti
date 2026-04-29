@@ -1,0 +1,66 @@
+name: CamisetasBasti
+options:
+  bundleIdPrefix: com.camisetasbasti
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+  defaultConfig: Release
+
+targets:
+  CamisetasBasti:
+    type: application
+    platform: iOS
+    sources:
+      - path: Models
+      - path: Data
+      - path: Services
+      - path: Components
+      - path: Views
+      - path: Utils
+      - path: CamisetasBastiApp.swift
+      - path: Resources
+    settings:
+      base:
+        INFOPLIST_FILE: Resources/Info.plist
+        PRODUCT_BUNDLE_IDENTIFIER: com.camisetasbasti.app
+        PRODUCT_NAME: Camisetas Basti
+        SWIFT_VERSION: "6.0"
+        TARGETED_DEVICE_FAMILY: "2"
+        IPHONEOS_DEPLOYMENT_TARGET: "16.0"
+        SUPPORTS_MACCATALYST: NO
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        CODE_SIGN_IDENTITY: ""
+        CODE_SIGNING_REQUIRED: NO
+        CODE_SIGNING_ALLOWED: NO
+        SWIFT_EMIT_LOC_STRINGS: YES
+        DEVELOPMENT_ASSET_PATHS: ""
+    scheme:
+      testTargets:
+        - CamisetasBastiTests
+      gatherCoverageData: true
+
+  CamisetasBastiTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: CamisetasBastiTests
+    dependencies:
+      - target: CamisetasBasti
+    settings:
+      base:
+        TEST_HOST: ""
+        BUNDLE_LOADER: ""
+        SWIFT_VERSION: "6.0"
+        IPHONEOS_DEPLOYMENT_TARGET: "16.0"
+
+  CamisetasBastiUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: CamisetasBastiUITests
+    dependencies:
+      - target: CamisetasBasti
+    settings:
+      base:
+        SWIFT_VERSION: "6.0"
+        IPHONEOS_DEPLOYMENT_TARGET: "16.0"

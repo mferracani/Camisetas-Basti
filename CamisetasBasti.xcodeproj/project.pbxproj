@@ -1,0 +1,660 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0FD8B26C0F03541C7FC4FACF /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76C40FED2CFD5D261580D3E4 /* HomeView.swift */; };
+		0FE393DDC800263AE6468DB5 /* FichaView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B2B8D527D4D1887D3419F1A /* FichaView.swift */; };
+		1760C12A0334A3D6D7B4B755 /* ConfettiView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A6C114039DFEE4190BE4670 /* ConfettiView.swift */; };
+		2DFF7BE87CECAC210407D4F5 /* PaintView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52DC639E7394D530E2F3246E /* PaintView.swift */; };
+		33384284719F7D4FFDFF8B52 /* SoundManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D78522FA3E5CBC41470F282 /* SoundManager.swift */; };
+		4157C2B2BF44C4C08AF63C2C /* FlagView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B0A727CA581C2D776BC96D4 /* FlagView.swift */; };
+		43E07F990CA0644E830401C4 /* AlbumView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29B6F57AE22D644396CCCA85 /* AlbumView.swift */; };
+		6EB48F0BED1A628281A77CC7 /* CAMI_DATA.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6B61EC2ABA669CFCE8D80AA /* CAMI_DATA.swift */; };
+		7C2BD79FCD44FAA76C895D80 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C931DEA97DE4115D3EE444A /* Models.swift */; };
+		7F6646249F32649ADAFD2AAF /* CountriesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8371E98AF78A40900BA0030C /* CountriesView.swift */; };
+		81680CFC918946350650C01B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 50CF4CA82E9FBD8B45DC1A78 /* Assets.xcassets */; };
+		84C256789B65197D3AEB970C /* ShirtPath.swift in Sources */ = {isa = PBXBuildFile; fileRef = 782368CA7B7C02A5C0D0DCE1 /* ShirtPath.swift */; };
+		85F715B3C23518039702FBFF /* SplashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BC487F9E3C96207FE628776 /* SplashView.swift */; };
+		8B60B69113959C8115FB7430 /* AlbumCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47FD99742A8677A1E7284FEB /* AlbumCell.swift */; };
+		8BA41912FE7FE34138F9CC58 /* CrestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D86F38F370EA943FDD1DCDCB /* CrestView.swift */; };
+		9CE820A86550511FAB2A1072 /* TeamsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 936953927B3BA81F94DE9CD4 /* TeamsView.swift */; };
+		AF1AC197126273EE01226CDF /* ProgressStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15560836092BE03FFC841988 /* ProgressStore.swift */; };
+		B41723CF7B02EC7E72047071 /* PaintEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 762734F94A165B1536621F47 /* PaintEngineTests.swift */; };
+		B533BBD1DBA922B1D5CE2CC5 /* TeamDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE06B1874A1E5CB918D23E86 /* TeamDetailView.swift */; };
+		C62F5CCAEADBD91F2B667232 /* BigKidButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FAA31BF179D543F0D87BED4 /* BigKidButton.swift */; };
+		CA819750B155F3CDA276C2A1 /* ColorName.swift in Sources */ = {isa = PBXBuildFile; fileRef = 926FCB2E96BDFBD21DEA5D00 /* ColorName.swift */; };
+		DAF0142365254A49392E492D /* GamesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB7FECA966030804CBCD5F99 /* GamesView.swift */; };
+		E3D39E283F24F2A987007011 /* BackButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70426947CA9BA97915FDCD84 /* BackButton.swift */; };
+		E4CB3DFDA1B6594B889B7D6A /* CamisetasBastiApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B02B5BBAD77FA3E55B602D64 /* CamisetasBastiApp.swift */; };
+		E95B2582D97CFBDE2999B6D6 /* CamisetasBastiUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0334935DC31B8A036FF593E2 /* CamisetasBastiUITests.swift */; };
+		EB461ACBFC0A7FB35B45AF1B /* ShirtView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A080A4C516FB2DF723896186 /* ShirtView.swift */; };
+		EBDAFF0D06631A4DBBDF1FDF /* ProgressStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 592A0F111F4846A6DE8F1576 /* ProgressStoreTests.swift */; };
+		FEE734781B2A067C692DF0C0 /* ProgressStars.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83F441B6FE57284BE1E787C5 /* ProgressStars.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		B38C2F3707810D1982636435 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 5BDBEF69F0848484A2A90347 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 86D082BEF962ECFD4D890FC4;
+			remoteInfo = CamisetasBasti;
+		};
+		D2D0A0F0FEAC1AFAED400CFC /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 5BDBEF69F0848484A2A90347 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 86D082BEF962ECFD4D890FC4;
+			remoteInfo = CamisetasBasti;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		0334935DC31B8A036FF593E2 /* CamisetasBastiUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CamisetasBastiUITests.swift; sourceTree = "<group>"; };
+		0FAA31BF179D543F0D87BED4 /* BigKidButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BigKidButton.swift; sourceTree = "<group>"; };
+		15560836092BE03FFC841988 /* ProgressStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressStore.swift; sourceTree = "<group>"; };
+		1C68FA8D81A9FFCC9098D098 /* CamisetasBasti.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = CamisetasBasti.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		29B6F57AE22D644396CCCA85 /* AlbumView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlbumView.swift; sourceTree = "<group>"; };
+		47FD99742A8677A1E7284FEB /* AlbumCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlbumCell.swift; sourceTree = "<group>"; };
+		4C931DEA97DE4115D3EE444A /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		50CF4CA82E9FBD8B45DC1A78 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		52DC639E7394D530E2F3246E /* PaintView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaintView.swift; sourceTree = "<group>"; };
+		592A0F111F4846A6DE8F1576 /* ProgressStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressStoreTests.swift; sourceTree = "<group>"; };
+		5BC487F9E3C96207FE628776 /* SplashView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashView.swift; sourceTree = "<group>"; };
+		6B0A727CA581C2D776BC96D4 /* FlagView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlagView.swift; sourceTree = "<group>"; };
+		70426947CA9BA97915FDCD84 /* BackButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackButton.swift; sourceTree = "<group>"; };
+		762734F94A165B1536621F47 /* PaintEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaintEngineTests.swift; sourceTree = "<group>"; };
+		76C40FED2CFD5D261580D3E4 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		782368CA7B7C02A5C0D0DCE1 /* ShirtPath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShirtPath.swift; sourceTree = "<group>"; };
+		7A6C114039DFEE4190BE4670 /* ConfettiView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfettiView.swift; sourceTree = "<group>"; };
+		8371E98AF78A40900BA0030C /* CountriesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CountriesView.swift; sourceTree = "<group>"; };
+		83F441B6FE57284BE1E787C5 /* ProgressStars.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressStars.swift; sourceTree = "<group>"; };
+		8D78522FA3E5CBC41470F282 /* SoundManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundManager.swift; sourceTree = "<group>"; };
+		926FCB2E96BDFBD21DEA5D00 /* ColorName.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorName.swift; sourceTree = "<group>"; };
+		936953927B3BA81F94DE9CD4 /* TeamsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TeamsView.swift; sourceTree = "<group>"; };
+		97C80FB2EF692C8EB4E88ACA /* CamisetasBastiUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = CamisetasBastiUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		9B2B8D527D4D1887D3419F1A /* FichaView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FichaView.swift; sourceTree = "<group>"; };
+		A080A4C516FB2DF723896186 /* ShirtView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShirtView.swift; sourceTree = "<group>"; };
+		B02B5BBAD77FA3E55B602D64 /* CamisetasBastiApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CamisetasBastiApp.swift; sourceTree = "<group>"; };
+		BE06B1874A1E5CB918D23E86 /* TeamDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TeamDetailView.swift; sourceTree = "<group>"; };
+		D0309408F9EEC136685FD1C0 /* CamisetasBastiTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = CamisetasBastiTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		D86F38F370EA943FDD1DCDCB /* CrestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrestView.swift; sourceTree = "<group>"; };
+		DC27532731ECF8482C10656E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		F6B61EC2ABA669CFCE8D80AA /* CAMI_DATA.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CAMI_DATA.swift; sourceTree = "<group>"; };
+		FB7FECA966030804CBCD5F99 /* GamesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GamesView.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		1EC7E5F9FA2FEB0FF1F5D8CB /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				4C931DEA97DE4115D3EE444A /* Models.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		3411B7DEE8F5673332FCF093 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				50CF4CA82E9FBD8B45DC1A78 /* Assets.xcassets */,
+				DC27532731ECF8482C10656E /* Info.plist */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		51C7E7F0A79D65172E81E528 /* Data */ = {
+			isa = PBXGroup;
+			children = (
+				F6B61EC2ABA669CFCE8D80AA /* CAMI_DATA.swift */,
+			);
+			path = Data;
+			sourceTree = "<group>";
+		};
+		785B08D427AC369ACFA53ADF /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				47FD99742A8677A1E7284FEB /* AlbumCell.swift */,
+				70426947CA9BA97915FDCD84 /* BackButton.swift */,
+				0FAA31BF179D543F0D87BED4 /* BigKidButton.swift */,
+				7A6C114039DFEE4190BE4670 /* ConfettiView.swift */,
+				D86F38F370EA943FDD1DCDCB /* CrestView.swift */,
+				6B0A727CA581C2D776BC96D4 /* FlagView.swift */,
+				83F441B6FE57284BE1E787C5 /* ProgressStars.swift */,
+				A080A4C516FB2DF723896186 /* ShirtView.swift */,
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
+		878193114954128FF132657F /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				29B6F57AE22D644396CCCA85 /* AlbumView.swift */,
+				8371E98AF78A40900BA0030C /* CountriesView.swift */,
+				9B2B8D527D4D1887D3419F1A /* FichaView.swift */,
+				FB7FECA966030804CBCD5F99 /* GamesView.swift */,
+				76C40FED2CFD5D261580D3E4 /* HomeView.swift */,
+				52DC639E7394D530E2F3246E /* PaintView.swift */,
+				5BC487F9E3C96207FE628776 /* SplashView.swift */,
+				BE06B1874A1E5CB918D23E86 /* TeamDetailView.swift */,
+				936953927B3BA81F94DE9CD4 /* TeamsView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		954186FC296F90CE05F326A7 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				1C68FA8D81A9FFCC9098D098 /* CamisetasBasti.app */,
+				D0309408F9EEC136685FD1C0 /* CamisetasBastiTests.xctest */,
+				97C80FB2EF692C8EB4E88ACA /* CamisetasBastiUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		A6982F845FD4071F783B6620 /* Utils */ = {
+			isa = PBXGroup;
+			children = (
+				926FCB2E96BDFBD21DEA5D00 /* ColorName.swift */,
+				782368CA7B7C02A5C0D0DCE1 /* ShirtPath.swift */,
+			);
+			path = Utils;
+			sourceTree = "<group>";
+		};
+		D86B1AAB30F5DA996B9C1933 /* CamisetasBastiUITests */ = {
+			isa = PBXGroup;
+			children = (
+				0334935DC31B8A036FF593E2 /* CamisetasBastiUITests.swift */,
+			);
+			path = CamisetasBastiUITests;
+			sourceTree = "<group>";
+		};
+		ECDF7D60D933AEB441162DB4 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				15560836092BE03FFC841988 /* ProgressStore.swift */,
+				8D78522FA3E5CBC41470F282 /* SoundManager.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		F8668178B5F34E48B5945CD6 = {
+			isa = PBXGroup;
+			children = (
+				B02B5BBAD77FA3E55B602D64 /* CamisetasBastiApp.swift */,
+				FEB6FB83C6CEAD64A11AE832 /* CamisetasBastiTests */,
+				D86B1AAB30F5DA996B9C1933 /* CamisetasBastiUITests */,
+				785B08D427AC369ACFA53ADF /* Components */,
+				51C7E7F0A79D65172E81E528 /* Data */,
+				1EC7E5F9FA2FEB0FF1F5D8CB /* Models */,
+				3411B7DEE8F5673332FCF093 /* Resources */,
+				ECDF7D60D933AEB441162DB4 /* Services */,
+				A6982F845FD4071F783B6620 /* Utils */,
+				878193114954128FF132657F /* Views */,
+				954186FC296F90CE05F326A7 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		FEB6FB83C6CEAD64A11AE832 /* CamisetasBastiTests */ = {
+			isa = PBXGroup;
+			children = (
+				762734F94A165B1536621F47 /* PaintEngineTests.swift */,
+				592A0F111F4846A6DE8F1576 /* ProgressStoreTests.swift */,
+			);
+			path = CamisetasBastiTests;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		86D082BEF962ECFD4D890FC4 /* CamisetasBasti */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 615800A43AA010183EE2700C /* Build configuration list for PBXNativeTarget "CamisetasBasti" */;
+			buildPhases = (
+				722913F4E42EB54E80F9666E /* Sources */,
+				B952DC5BA227A5B863672E13 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = CamisetasBasti;
+			packageProductDependencies = (
+			);
+			productName = CamisetasBasti;
+			productReference = 1C68FA8D81A9FFCC9098D098 /* CamisetasBasti.app */;
+			productType = "com.apple.product-type.application";
+		};
+		86D842F189CE0E27186A4B8C /* CamisetasBastiTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 16C64FDA01A84C0B08BF5B76 /* Build configuration list for PBXNativeTarget "CamisetasBastiTests" */;
+			buildPhases = (
+				3979E3A3DE6B5D6BCDB0B085 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				7CF4B29294528B99E9548EAD /* PBXTargetDependency */,
+			);
+			name = CamisetasBastiTests;
+			packageProductDependencies = (
+			);
+			productName = CamisetasBastiTests;
+			productReference = D0309408F9EEC136685FD1C0 /* CamisetasBastiTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		CE807A9223C9F062E1846B20 /* CamisetasBastiUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 9289130E51F981F76BFE4275 /* Build configuration list for PBXNativeTarget "CamisetasBastiUITests" */;
+			buildPhases = (
+				ADD5E51E198FB10B4B4AF80D /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				E384C0F86690C5BCA78C7B23 /* PBXTargetDependency */,
+			);
+			name = CamisetasBastiUITests;
+			packageProductDependencies = (
+			);
+			productName = CamisetasBastiUITests;
+			productReference = 97C80FB2EF692C8EB4E88ACA /* CamisetasBastiUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		5BDBEF69F0848484A2A90347 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					CE807A9223C9F062E1846B20 = {
+						TestTargetID = 86D082BEF962ECFD4D890FC4;
+					};
+				};
+			};
+			buildConfigurationList = 2682C3D3B4E919D5939498BB /* Build configuration list for PBXProject "CamisetasBasti" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = F8668178B5F34E48B5945CD6;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 954186FC296F90CE05F326A7 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				86D082BEF962ECFD4D890FC4 /* CamisetasBasti */,
+				86D842F189CE0E27186A4B8C /* CamisetasBastiTests */,
+				CE807A9223C9F062E1846B20 /* CamisetasBastiUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		B952DC5BA227A5B863672E13 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				81680CFC918946350650C01B /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		3979E3A3DE6B5D6BCDB0B085 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B41723CF7B02EC7E72047071 /* PaintEngineTests.swift in Sources */,
+				EBDAFF0D06631A4DBBDF1FDF /* ProgressStoreTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		722913F4E42EB54E80F9666E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8B60B69113959C8115FB7430 /* AlbumCell.swift in Sources */,
+				43E07F990CA0644E830401C4 /* AlbumView.swift in Sources */,
+				E3D39E283F24F2A987007011 /* BackButton.swift in Sources */,
+				C62F5CCAEADBD91F2B667232 /* BigKidButton.swift in Sources */,
+				6EB48F0BED1A628281A77CC7 /* CAMI_DATA.swift in Sources */,
+				E4CB3DFDA1B6594B889B7D6A /* CamisetasBastiApp.swift in Sources */,
+				CA819750B155F3CDA276C2A1 /* ColorName.swift in Sources */,
+				1760C12A0334A3D6D7B4B755 /* ConfettiView.swift in Sources */,
+				7F6646249F32649ADAFD2AAF /* CountriesView.swift in Sources */,
+				8BA41912FE7FE34138F9CC58 /* CrestView.swift in Sources */,
+				0FE393DDC800263AE6468DB5 /* FichaView.swift in Sources */,
+				4157C2B2BF44C4C08AF63C2C /* FlagView.swift in Sources */,
+				DAF0142365254A49392E492D /* GamesView.swift in Sources */,
+				0FD8B26C0F03541C7FC4FACF /* HomeView.swift in Sources */,
+				7C2BD79FCD44FAA76C895D80 /* Models.swift in Sources */,
+				2DFF7BE87CECAC210407D4F5 /* PaintView.swift in Sources */,
+				FEE734781B2A067C692DF0C0 /* ProgressStars.swift in Sources */,
+				AF1AC197126273EE01226CDF /* ProgressStore.swift in Sources */,
+				84C256789B65197D3AEB970C /* ShirtPath.swift in Sources */,
+				EB461ACBFC0A7FB35B45AF1B /* ShirtView.swift in Sources */,
+				33384284719F7D4FFDFF8B52 /* SoundManager.swift in Sources */,
+				85F715B3C23518039702FBFF /* SplashView.swift in Sources */,
+				B533BBD1DBA922B1D5CE2CC5 /* TeamDetailView.swift in Sources */,
+				9CE820A86550511FAB2A1072 /* TeamsView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		ADD5E51E198FB10B4B4AF80D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E95B2582D97CFBDE2999B6D6 /* CamisetasBastiUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		7CF4B29294528B99E9548EAD /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 86D082BEF962ECFD4D890FC4 /* CamisetasBasti */;
+			targetProxy = B38C2F3707810D1982636435 /* PBXContainerItemProxy */;
+		};
+		E384C0F86690C5BCA78C7B23 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 86D082BEF962ECFD4D890FC4 /* CamisetasBasti */;
+			targetProxy = D2D0A0F0FEAC1AFAED400CFC /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		24C88A66F4654C54AE8D9042 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		2635E0E01828897496180CED /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.camisetasbasti.CamisetasBastiUITests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = CamisetasBasti;
+			};
+			name = Release;
+		};
+		319B6F40DBEF1F70987DB9CF /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.camisetasbasti.CamisetasBastiUITests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = CamisetasBasti;
+			};
+			name = Debug;
+		};
+		44EFB79B20DB1D260DF2FDC7 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.camisetasbasti.CamisetasBastiTests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "";
+			};
+			name = Release;
+		};
+		5109F80847C160C2C78DAB91 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGNING_REQUIRED = NO;
+				CODE_SIGN_IDENTITY = "";
+				DEVELOPMENT_ASSET_PATHS = "";
+				INFOPLIST_FILE = Resources/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.camisetasbasti.app;
+				PRODUCT_NAME = "Camisetas Basti";
+				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 2;
+			};
+			name = Release;
+		};
+		D122D3618428D7573A035B4D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		DC99356A2ED1BE1E4A560933 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGNING_REQUIRED = NO;
+				CODE_SIGN_IDENTITY = "";
+				DEVELOPMENT_ASSET_PATHS = "";
+				INFOPLIST_FILE = Resources/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.camisetasbasti.app;
+				PRODUCT_NAME = "Camisetas Basti";
+				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 2;
+			};
+			name = Debug;
+		};
+		E9CA5ABC51A4C0079FDCE148 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.camisetasbasti.CamisetasBastiTests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "";
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		16C64FDA01A84C0B08BF5B76 /* Build configuration list for PBXNativeTarget "CamisetasBastiTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E9CA5ABC51A4C0079FDCE148 /* Debug */,
+				44EFB79B20DB1D260DF2FDC7 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		2682C3D3B4E919D5939498BB /* Build configuration list for PBXProject "CamisetasBasti" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D122D3618428D7573A035B4D /* Debug */,
+				24C88A66F4654C54AE8D9042 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		615800A43AA010183EE2700C /* Build configuration list for PBXNativeTarget "CamisetasBasti" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DC99356A2ED1BE1E4A560933 /* Debug */,
+				5109F80847C160C2C78DAB91 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		9289130E51F981F76BFE4275 /* Build configuration list for PBXNativeTarget "CamisetasBastiUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				319B6F40DBEF1F70987DB9CF /* Debug */,
+				2635E0E01828897496180CED /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 5BDBEF69F0848484A2A90347 /* Project object */;
+}
