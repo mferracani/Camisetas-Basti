@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>CAMISETAS · iPad App</title>
+<meta name="viewport" content="width=1400, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; padding: 0; font-family: 'Nunito', system-ui, -apple-system, sans-serif; background: #f0eee9; }
+  * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+  button { font-family: inherit; }
+  .ipad-frame {
+    position: relative; background: #1A1A1A; border-radius: 36px; padding: 14px;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.18), 0 0 0 2px #2a2520;
+  }
+  .ipad-screen {
+    position: relative; border-radius: 22px; overflow: hidden; background: #FFF7EC;
+  }
+  .ipad-camera { position: absolute; top: 7px; left: 50%; transform: translateX(-50%); width: 6px; height: 6px; border-radius: 3px; background: #444; z-index: 10; }
+  /* iPad status bar */
+  .ipad-status {
+    position: absolute; top: 0; left: 0; right: 0; height: 28px; padding: 0 22px;
+    display: flex; align-items: center; justify-content: space-between;
+    color: #3D2A1F; font-weight: 800; font-size: 12px; letter-spacing: 0.5px;
+    z-index: 5; pointer-events: none;
+  }
+  .ipad-screen-inner { position: absolute; inset: 28px 0 0 0; }
+</style>
+</head>
+<body>
+
+<!-- React + Babel -->
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="data.jsx"></script>
+<script type="text/babel" src="shirts.jsx"></script>
+<script type="text/babel" src="screens.jsx"></script>
+<script type="text/babel" src="paint-screen.jsx"></script>
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+
+<div id="root"></div>
+
+<script type="text/babel">
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "paletteName": "warm",
+  "buttonScale": 1.0,
+  "revealSpeed": 1.0
+}/*EDITMODE-END*/;
+
+const PALETTES = {
+  warm:  { bg: '#FFF7EC', name: 'CÁLIDA' },
+  sky:   { bg: '#E8F4FF', name: 'CELESTE' },
+  mint:  { bg: '#F1F8EE', name: 'MENTA' },
+  cream: { bg: '#FBF6EE', name: 'CREMA' },
+};
+
+// iPad 12.9" landscape: 2732×2048 native, design at 1366×1024 logical (or 1180×820 for 11").
+// We'll use 1180×820 framed for tighter density.
+const IPAD_W = 1180, IPAD_H = 820;
+
+function IPadFrame({ children, label }) {
+  return (
+    <div className="ipad-frame" style={{ width: IPAD_W + 28, height: IPAD_H + 28 }}>
+      <div className="ipad-camera" />
+      <div className="ipad-screen" style={{ width: IPAD_W, height: IPAD_H }}>
+        <div className="ipad-status">
+          <span>9:41</span>
+          <span>{label || 'CAMISETAS'}</span>
+          <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <span style={{ fontSize: 10 }}>✈</span>
+            <span style={{ fontSize: 11 }}>100%</span>
+            <span style={{ display: 'inline-block', width: 22, height: 10, border: '1.5px solid #3D2A1F', borderRadius: 2, position: 'relative' }}>
+              <span style={{ position: 'absolute', inset: 1, background: '#3D2A1F', borderRadius: 1 }} />
+            </span>
+          </span>
+        </div>
+        <div className="ipad-screen-inner">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Each screen wrapped in iPad frame, in DCArtboard
+function ScreenArtboard({ id, label, screen, palette, label2 }) {
+  return (
+    <DCArtboard id={id} label={label} width={IPAD_W + 28} height={IPAD_H + 28}>
+      <IPadFrame label={label2}>{screen}</IPadFrame>
+    </DCArtboard>
+  );
+}
+
+function App() {
+  const [tweaks, setTweak] = useTweaks(TWEAK_DEFAULTS);
+  const palette = PALETTES[tweaks.paletteName] || PALETTES.warm;
+
+  // Prototype state (for the interactive frame)
+  const [protoScreen, setProtoScreen] = React.useState('home');
+  const [protoCountry, setProtoCountry] = React.useState(null);
+  const [protoTeam, setProtoTeam] = React.useState(null);
+  const [protoKit, setProtoKit] = React.useState('home');
+
+  const goHome = () => { setProtoScreen('home'); };
+  const renderProto = () => {
+    switch (protoScreen) {
+      case 'home': return <HomeScreen palette={palette} onGo={s => setProtoScreen(s)} />;
+      case 'countries': return <CountriesScreen palette={palette} onBack={goHome} onPick={c => { setProtoCountry(c); setProtoScreen('teams'); }} />;
+      case 'teams': return <TeamsScreen palette={palette} country={protoCountry} onBack={() => setProtoScreen('countries')} onPick={t => { setProtoTeam(t); setProtoScreen('detail'); }} />;
+      case 'detail': return <TeamDetailScreen palette={palette} country={protoCountry} team={protoTeam} onBack={() => setProtoScreen('teams')} onPick={k => { setProtoKit(k); setProtoScreen('paint'); }} />;
+      case 'paint': return <PaintScreen team={protoTeam} kit={protoKit} palette={palette} revealSpeed={tweaks.revealSpeed} onBack={() => setProtoScreen('detail')} onDone={() => setProtoScreen('ficha')} />;
+      case 'ficha': return <FichaScreen palette={palette} country={protoCountry} team={protoTeam} kit={protoKit} onBack={() => setProtoScreen('paint')} onAlbum={() => setProtoScreen('album')} onAnother={() => setProtoScreen('teams')} onRepaint={() => setProtoScreen('paint')} />;
+      case 'album': return <AlbumScreen palette={palette} onBack={goHome} />;
+      case 'games': return <GamesScreen palette={palette} onBack={goHome} onPlay={g => setProtoScreen(g==='paint'?'countries':g)} />;
+      case 'guess': return <GuessScreen palette={palette} onBack={() => setProtoScreen('games')} />;
+      case 'memory': return <MemoryScreen palette={palette} onBack={() => setProtoScreen('games')} />;
+      case 'rewards': return <RewardsScreen palette={palette} onBack={goHome} />;
+      default: return <HomeScreen palette={palette} onGo={s => setProtoScreen(s)} />;
+    }
+  };
+
+  // Sample data for static screens
+  const arg = CAMI_DATA.COUNTRIES[0];
+  const boca = CAMI_DATA.TEAMS.arg[0];
+  const fcb = CAMI_DATA.TEAMS.esp[1];
+  const esp = CAMI_DATA.COUNTRIES[2];
+
+  return (
+    <>
+      <DesignCanvas>
+        {/* === PROTOTIPO INTERACTIVO === */}
+        <DCSection id="proto" title="Prototipo interactivo" subtitle="Tocá los botones · navegá entre pantallas · pintá la camiseta de verdad">
+          <DCArtboard id="proto-app" label="App navegable" width={IPAD_W + 28} height={IPAD_H + 28}>
+            <IPadFrame label={protoScreen.toUpperCase()}>{renderProto()}</IPadFrame>
+          </DCArtboard>
+        </DCSection>
+
+        {/* === FLUJO PRINCIPAL === */}
+        <DCSection id="flow" title="Flujo principal" subtitle="HOME → PAÍSES → EQUIPOS → DETALLE → PINTAR → FICHA">
+          <DCArtboard id="s-home" label="01 · HOME" width={IPAD_W + 28} height={IPAD_H + 28}>
+            <IPadFrame label="HOME"><HomeScreen palette={palette} onGo={()=>{}} /></IPadFrame>
+          </DCArtboard>
+          <DCArtboard id="s-countries" label="02 · PAÍSES" width={IPAD_W + 28} height={IPAD_H + 28}>
+            <IPadFrame label="PAÍSES"><CountriesScreen palette={palette} onBack={()=>{}} onPick={()=>{}} /></IPadFrame>
+          </DCArtboard>
+          <DCArtboard id="s-teams" label="03 · EQUIPOS · ARGENTINA" width={IPAD_W + 28} height={IPAD_H + 28}>
+            <IPadFrame label="EQUIPOS"><TeamsScreen palette={palette} country={arg} onBack={()=>{}} onPick={()=>{}} /></IPadFrame>
+          </DCArtboard>
+          <DCArtboard id="s-detail" label="04 · DETALLE · BOCA" width={IPAD_W + 28} height={IPAD_H + 28}>
+            <IPadFrame label="DETALLE"><TeamDetailScreen palette={palette} country={arg} team={boca} onBack={()=>{}} onPick={()=>{}} /></IPadFrame>
+          </DCArtboard>
+          <DCArtboard id="s-paint" label="05 · PINTAR ★" width={IPAD_W + 28} height={IPAD_H + 28}>
+            <IPadFrame label="PINTAR"><PaintScreen team={boca} kit="home" palette={palette} revealSpeed={tweaks.revealSpeed} onBack={()=>{}} onDone={()=>{}} /></IPadFrame>
+          </DCArtboard>
+          <DCArtboard id="s-ficha" label="06 · FICHA FINAL" width={IPAD_W + 28} height={IPAD_H + 28}>
+            <IPadFrame label="FICHA"><FichaScreen palette={palette} country={arg} team={boca} kit="home" onBack={()=>{}} onAlbum={()=>{}} onAnother={()=>{}} onRepaint={()=>{}} /></IPadFrame>
+          </DCArtboard>
+        </DCSection>
+
+        {/* === ÁLBUM + JUEGOS === */}
+        <DCSection id="games" title="Álbum + Juegos" subtitle="Colección · 3 modos de juego · premios">
+          <DCArtboard id="s-album" label="07 · ÁLBUM" width={IPAD_W + 28} height={IPAD_H + 28}>
+            <IPadFrame label="ÁLBUM"><AlbumScreen palette={palette} onBack={()=>{}} /></IPadFrame>
+          </DCArtboard>
+          <DCArtboard id="s-games" label="08 · JUEGOS" width={IPAD_W + 28} height={IPAD_H + 28}>
+            <IPadFrame label="JUGAR"><GamesScreen palette={palette} onBack={()=>{}} onPlay={()=>{}} /></IPadFrame>
+          </DCArtboard>
+          <DCArtboard id="s-guess" label="09 · ADIVINAR" width={IPAD_W + 28} height={IPAD_H + 28}>
+            <IPadFrame label="ADIVINAR"><GuessScreen palette={palette} onBack={()=>{}} /></IPadFrame>
+          </DCArtboard>
+          <DCArtboard id="s-memory" label="10 · MEMORIA" width={IPAD_W + 28} height={IPAD_H + 28}>
+            <IPadFrame label="MEMORIA"><MemoryScreen palette={palette} onBack={()=>{}} /></IPadFrame>
+          </DCArtboard>
+          <DCArtboard id="s-rewards" label="11 · PREMIOS" width={IPAD_W + 28} height={IPAD_H + 28}>
+            <IPadFrame label="PREMIOS"><RewardsScreen palette={palette} onBack={()=>{}} /></IPadFrame>
+          </DCArtboard>
+        </DCSection>
+
+        {/* === ESTADOS DE CAMISETA === */}
+        <DCSection id="states" title="Estados de camiseta" subtitle="Mismo asset, 4 estados · sistema escalable">
+          <DCArtboard id="states-board" label="Boca · 4 estados" width={1100} height={420}>
+            <div style={{ width: '100%', height: '100%', background: '#FFFFFF', borderRadius: 20, padding: 32, display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20 }}>
+              {[
+                { mode: 'gray', label: 'GRIS · BLOQUEADA', sub: 'Punto de partida' },
+                { mode: 'partial', pct: 30, label: 'PARCIAL 30%', sub: 'En proceso' },
+                { mode: 'partial', pct: 70, label: 'PARCIAL 70%', sub: 'Casi descubierta' },
+                { mode: 'color', label: 'COMPLETA', sub: 'Sumada al álbum' },
+              ].map((s, i) => (
+                <div key={i} style={{ background: '#FFF7EC', borderRadius: 18, padding: 20, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                  <Shirt team={boca} kit="home" size={180} mode={s.mode} revealPct={s.pct||0} idSuffix={`st${i}`} />
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: 14, fontWeight: 900, color: '#3D2A1F', letterSpacing: 1 }}>{s.label}</div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: '#7A4E1B', marginTop: 2 }}>{s.sub}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </DCArtboard>
+
+          <DCArtboard id="paint-explainer" label="Cómo funciona la máscara" width={1100} height={420}>
+            <div style={{ width: '100%', height: '100%', background: '#FFFFFF', borderRadius: 20, padding: 28 }}>
+              <div style={{ fontSize: 22, fontWeight: 900, color: '#3D2A1F', marginBottom: 16, letterSpacing: '-0.3px' }}>Mecánica del rasguño/pintura</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
+                {[
+                  { n: 1, t: 'CAMISETA REAL', d: 'Capa base oculta. Renderizada con SVG (rayas, bandas, sash, etc).' },
+                  { n: 2, t: 'CAPA GRIS', d: 'Canvas HTML5 encima. Color #D9D5CE con textura sutil.' },
+                  { n: 3, t: 'CLIP-PATH', d: 'El canvas está clipeado a la silueta exacta de la camiseta. El trazo nunca sale.' },
+                  { n: 4, t: 'DESTINATION-OUT', d: 'Cada toque borra la capa gris en círculos suaves. Se mide % revelado y dispara confetti al 85%.' },
+                ].map(s => (
+                  <div key={s.n} style={{ background: '#FFF7EC', borderRadius: 16, padding: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <div style={{ width: 44, height: 44, borderRadius: 22, background: '#FF7B3D', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 900 }}>{s.n}</div>
+                    <div style={{ fontSize: 14, fontWeight: 900, color: '#3D2A1F', letterSpacing: 0.5 }}>{s.t}</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#7A4E1B', lineHeight: 1.4 }}>{s.d}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </DCArtboard>
+        </DCSection>
+
+        {/* === REFERENCIA: CAMISETAS REALES === */}
+        <DCSection id="reference" title="Camisetas representativas" subtitle="6 países · titular y suplente · escalable a 60 equipos">
+          <DCArtboard id="ref-board" label="Galería de referencia" width={1100} height={620}>
+            <div style={{ width: '100%', height: '100%', background: '#FFFFFF', borderRadius: 20, padding: 24, overflow: 'auto' }}>
+              {CAMI_DATA.COUNTRIES.map(c => (
+                <div key={c.id} style={{ marginBottom: 18 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                    <Flag country={c} w={36} h={24} rounded={4} />
+                    <div style={{ fontSize: 16, fontWeight: 900, color: '#3D2A1F', letterSpacing: 0.5 }}>{c.name}</div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)', gap: 8 }}>
+                    {(CAMI_DATA.TEAMS[c.id] || []).slice(0, 10).map(t => (
+                      <div key={t.id} style={{ background: '#FFF7EC', borderRadius: 12, padding: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                        <Shirt team={t} kit="home" size={70} mode="color" idSuffix={`ref${c.id}${t.id}`} />
+                        <div style={{ fontSize: 9, fontWeight: 900, color: '#3D2A1F', letterSpacing: 0.4 }}>{t.short}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </DCArtboard>
+        </DCSection>
+
+        {/* === DESIGN SYSTEM === */}
+        <DCSection id="ds" title="Mini design system" subtitle="Colores · tipografía · botones · cards">
+          <DCArtboard id="ds-colors" label="Paleta" width={540} height={380}>
+            <div style={{ width: '100%', height: '100%', background: '#FFFFFF', borderRadius: 20, padding: 24 }}>
+              <div style={{ fontSize: 18, fontWeight: 900, color: '#3D2A1F', marginBottom: 14, letterSpacing: '-0.3px' }}>Colores</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
+                {[
+                  { c: '#FFF7EC', n: 'BG · CRema', fg: '#3D2A1F' },
+                  { c: '#FFFFFF', n: 'CARD', fg: '#3D2A1F', border: true },
+                  { c: '#FF7B3D', n: 'PRIMARIO', fg: '#FFFFFF' },
+                  { c: '#FFC93C', n: 'SOL', fg: '#3D2A1F' },
+                  { c: '#6BCBFF', n: 'CIELO', fg: '#FFFFFF' },
+                  { c: '#7DDB8B', n: 'PASTO', fg: '#FFFFFF' },
+                  { c: '#FF7B6B', n: 'ERROR', fg: '#FFFFFF' },
+                  { c: '#3D2A1F', n: 'TEXTO', fg: '#FFFFFF' },
+                ].map(s => (
+                  <div key={s.n} style={{ background: s.c, color: s.fg, borderRadius: 12, padding: 14, fontSize: 11, fontWeight: 800, letterSpacing: 0.5, height: 80, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', border: s.border?'1px solid #EBE3D2':'none' }}>
+                    <div>{s.n}</div>
+                    <div style={{ fontSize: 9, opacity: 0.7, marginTop: 2 }}>{s.c}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </DCArtboard>
+
+          <DCArtboard id="ds-type" label="Tipografía" width={540} height={380}>
+            <div style={{ width: '100%', height: '100%', background: '#FFFFFF', borderRadius: 20, padding: 24, fontFamily: 'Nunito, sans-serif' }}>
+              <div style={{ fontSize: 18, fontWeight: 900, color: '#3D2A1F', marginBottom: 14, letterSpacing: '-0.3px' }}>Nunito · 800/900</div>
+              <div style={{ fontSize: 56, fontWeight: 900, color: '#3D2A1F', letterSpacing: '-1.5px', lineHeight: 1 }}>CAMISETAS</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#7A4E1B', marginBottom: 16 }}>Display 56 · 900 · -1.5px</div>
+              <div style={{ fontSize: 36, fontWeight: 900, color: '#3D2A1F', letterSpacing: '-0.5px' }}>ELIGE UN PAÍS</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#7A4E1B', marginBottom: 12 }}>Title 36 · 900</div>
+              <div style={{ fontSize: 22, fontWeight: 900, color: '#3D2A1F' }}>JUGAR · ÁLBUM</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#7A4E1B', marginBottom: 12 }}>Button 22 · 900</div>
+              <div style={{ fontSize: 14, fontWeight: 800, color: '#7A4E1B', letterSpacing: 1.5 }}>SIGUE PINTANDO</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#7A4E1B' }}>Caption 14 · 800 · +1.5px</div>
+            </div>
+          </DCArtboard>
+
+          <DCArtboard id="ds-buttons" label="Botones" width={1100} height={260}>
+            <div style={{ width: '100%', height: '100%', background: '#FFFFFF', borderRadius: 20, padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ fontSize: 18, fontWeight: 900, color: '#3D2A1F', letterSpacing: '-0.3px' }}>BigKidButton · todas las variantes</div>
+              <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center' }}>
+                <BigKidButton variant="primary" icon="🌎">PAÍSES</BigKidButton>
+                <BigKidButton variant="sky" icon="👕">JUGAR</BigKidButton>
+                <BigKidButton variant="grass" icon="📒">ÁLBUM</BigKidButton>
+                <BigKidButton variant="sun" icon="⭐">PREMIOS</BigKidButton>
+                <BigKidButton variant="secondary">VOLVER</BigKidButton>
+              </div>
+              <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
+                <BackButton onClick={()=>{}} />
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#7A4E1B' }}>Botón volver · 64×64 · siempre arriba-izquierda</div>
+              </div>
+            </div>
+          </DCArtboard>
+
+          <DCArtboard id="ds-components" label="Componentes" width={1100} height={300}>
+            <div style={{ width: '100%', height: '100%', background: '#FFFFFF', borderRadius: 20, padding: 24, display: 'flex', gap: 20, alignItems: 'center', overflow: 'auto' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                <Flag country={arg} w={120} h={80} rounded={12} />
+                <div style={{ fontSize: 11, fontWeight: 800, color: '#7A4E1B', letterSpacing: 0.6 }}>FLAG</div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                <BigCrest crest={boca.crest} size={80} />
+                <div style={{ fontSize: 11, fontWeight: 800, color: '#7A4E1B', letterSpacing: 0.6 }}>CREST</div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                <Shirt team={boca} kit="home" size={120} mode="color" idSuffix="dsa" />
+                <div style={{ fontSize: 11, fontWeight: 800, color: '#7A4E1B', letterSpacing: 0.6 }}>SHIRT VIEWER</div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                <ProgressStars count={3} total={5} size={28} />
+                <div style={{ fontSize: 11, fontWeight: 800, color: '#7A4E1B', letterSpacing: 0.6 }}>PROGRESS STARS</div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                <div style={{ background: '#FFF7EC', borderRadius: 16, padding: 12, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, width: 100 }}>
+                  <Shirt team={fcb} kit="home" size={70} mode="color" idSuffix="dsb" />
+                  <div style={{ fontSize: 10, fontWeight: 900, color: '#3D2A1F' }}>BARÇA</div>
+                </div>
+                <div style={{ fontSize: 11, fontWeight: 800, color: '#7A4E1B', letterSpacing: 0.6 }}>ALBUM CELL</div>
+              </div>
+            </div>
+          </DCArtboard>
+        </DCSection>
+
+        {/* === ESTADOS ESPECIALES === */}
+        <DCSection id="edge" title="Estados especiales" subtitle="Vacío · error · offline">
+          <DCArtboard id="empty-album" label="Álbum vacío" width={IPAD_W/2} height={IPAD_H/2}>
+            <div style={{ width: '100%', height: '100%', background: palette.bg, borderRadius: 18, padding: 30, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18 }}>
+              <Shirt team={boca} kit="home" size={120} mode="gray" idSuffix="empty" />
+              <div style={{ fontSize: 22, fontWeight: 900, color: '#3D2A1F', textAlign: 'center', letterSpacing: '-0.3px' }}>PINTA TU PRIMERA<br/>CAMISETA</div>
+              <BigKidButton variant="primary" size="md" icon="🎨">EMPEZAR</BigKidButton>
+            </div>
+          </DCArtboard>
+          <DCArtboard id="error-asset" label="Asset no disponible" width={IPAD_W/2} height={IPAD_H/2}>
+            <div style={{ width: '100%', height: '100%', background: palette.bg, borderRadius: 18, padding: 30, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18 }}>
+              <div style={{ width: 140, height: 160, borderRadius: 18, background: '#EBE3D2', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 64 }}>👕</div>
+              <div style={{ fontSize: 22, fontWeight: 900, color: '#3D2A1F', textAlign: 'center', letterSpacing: '-0.3px' }}>NO DISPONIBLE</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#7A4E1B' }}>VOLVÉ A INTENTAR</div>
+            </div>
+          </DCArtboard>
+          <DCArtboard id="offline" label="Offline / sin internet" width={IPAD_W/2} height={IPAD_H/2}>
+            <div style={{ width: '100%', height: '100%', background: palette.bg, borderRadius: 18, padding: 30, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18 }}>
+              <div style={{ fontSize: 80 }}>✈️</div>
+              <div style={{ fontSize: 22, fontWeight: 900, color: '#3D2A1F', textAlign: 'center', letterSpacing: '-0.3px' }}>LISTO PARA JUGAR<br/>SIN INTERNET</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#7A4E1B', letterSpacing: 1, textAlign: 'center' }}>TODAS LAS CAMISETAS<br/>SE GUARDAN EN EL iPAD</div>
+            </div>
+          </DCArtboard>
+          <DCArtboard id="feedback" label="Feedback ✓ / ✗" width={IPAD_W/2} height={IPAD_H/2}>
+            <div style={{ width: '100%', height: '100%', background: palette.bg, borderRadius: 18, padding: 30, display: 'flex', alignItems: 'center', justifyContent: 'space-around' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 110, height: 110, borderRadius: 55, background: '#7DDB8B', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 64, color: '#FFFFFF', boxShadow: '0 8px 20px rgba(125,219,139,0.4)' }}>✓</div>
+                <div style={{ fontSize: 18, fontWeight: 900, color: '#3D2A1F' }}>¡MUY BIEN!</div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 110, height: 110, borderRadius: 55, background: '#FFE9C7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 56, boxShadow: '0 8px 20px rgba(255,197,140,0.4)' }}>🔁</div>
+                <div style={{ fontSize: 18, fontWeight: 900, color: '#3D2A1F' }}>SIGUE PINTANDO</div>
+              </div>
+            </div>
+          </DCArtboard>
+        </DCSection>
+
+        {/* === NOTAS DE DISEÑO === */}
+        <DCSection id="notes" title="Notas de diseño · supuestos">
+          <DCArtboard id="design-notes" label="Decisiones clave" width={1100} height={460}>
+            <div style={{ width: '100%', height: '100%', background: '#FFFFFF', borderRadius: 20, padding: 28, fontFamily: 'Nunito, sans-serif', overflow: 'auto' }}>
+              <div style={{ fontSize: 20, fontWeight: 900, color: '#3D2A1F', marginBottom: 12, letterSpacing: '-0.3px' }}>Por qué se ve así</div>
+              <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 10, fontSize: 14, color: '#3D2A1F', lineHeight: 1.5, fontWeight: 600 }}>
+                <li><strong style={{ color: '#FF7B3D' }}>· Design system descartado.</strong> Trip Planner Pro 2 es dark mode adulto-data. El brief pide claro, cálido, infantil-premium. Seguí el brief — TPP2 no aplica.</li>
+                <li><strong style={{ color: '#FF7B3D' }}>· Camisetas en SVG paramétrico.</strong> Cada equipo tiene <code style={{ background: '#FFF7EC', padding: '2px 6px', borderRadius: 4 }}>{`{pattern, c[]}`}</code> y se renderiza con la misma silueta. 60 camisetas con un sólo path. Escalable a Figma/dev: reemplazar el SVG por PNG/asset oficial cuando haya licencia.</li>
+                <li><strong style={{ color: '#FF7B3D' }}>· Escudos estilizados (no oficiales).</strong> Forma + iniciales + colores del club. Reconocible pero no copia. Posible swap a escudo oficial vía <code style={{ background: '#FFF7EC', padding: '2px 6px', borderRadius: 4 }}>team.crest.asset</code>.</li>
+                <li><strong style={{ color: '#FF7B3D' }}>· Pantalla PINTAR funcional.</strong> Canvas 2D + clip-path al silueta exacta. <code style={{ background: '#FFF7EC', padding: '2px 6px', borderRadius: 4 }}>destination-out</code> + sample cada touchend para medir % revelado. Confetti + bounce al 85%. Sin sonido (decisión: feedback solo visual).</li>
+                <li><strong style={{ color: '#FF7B3D' }}>· Tipografía Nunito.</strong> Redondeada, legible, gratis (Google Fonts). SF Pro Rounded sería ideal en producción nativa iPad.</li>
+                <li><strong style={{ color: '#FF7B3D' }}>· Botones tipo "kid": sombra dura 0 8px.</strong> Se hunden al tocar (translateY) — feedback táctil claro sin haptics.</li>
+                <li><strong style={{ color: '#FF7B3D' }}>· Todo en MAYÚSCULAS.</strong> Consistente con brief. Niño de 4 años distingue formas de palabras antes que letras.</li>
+                <li><strong style={{ color: '#FF7B3D' }}>· Abrí Tweaks (botón en barra superior)</strong> para cambiar paleta de fondo, escala de botones y velocidad del revelado.</li>
+              </ul>
+            </div>
+          </DCArtboard>
+        </DCSection>
+      </DesignCanvas>
+
+      {/* TWEAKS */}
+      <TweaksPanel title="Tweaks">
+        <TweakSection title="Paleta de fondo">
+          <TweakRadio
+            value={tweaks.paletteName}
+            onChange={v => setTweak('paletteName', v)}
+            options={[
+              { value: 'warm', label: 'CÁLIDA' },
+              { value: 'sky', label: 'CELESTE' },
+              { value: 'mint', label: 'MENTA' },
+              { value: 'cream', label: 'CREMA' },
+            ]}
+          />
+        </TweakSection>
+        <TweakSection title="Botones">
+          <TweakSlider label="Escala" value={tweaks.buttonScale} onChange={v => setTweak('buttonScale', v)} min={0.85} max={1.2} step={0.05} />
+        </TweakSection>
+        <TweakSection title="Pintar / revelar">
+          <TweakSlider label="Velocidad de revelado" value={tweaks.revealSpeed} onChange={v => setTweak('revealSpeed', v)} min={0.5} max={2} step={0.1} />
+        </TweakSection>
+      </TweaksPanel>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+
+</body>
+</html>

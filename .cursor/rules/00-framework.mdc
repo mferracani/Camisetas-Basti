@@ -1,0 +1,37 @@
+---
+description: Framework general del Agent Kit para Camisetas Basti. Reglas de gates, state file, handoffs y stack Swift nativo. Siempre aplicar.
+alwaysApply: true
+---
+
+# Agent Kit Framework — Camisetas Basti
+
+Este proyecto usa un framework multi-agente con 3 gates y 6 roles, adaptado para una app iOS/macOS nativa (SwiftUI), local-first, offline, para niños de 4 años.
+
+## Gates (no se saltan sin aprobación del usuario)
+1. **Gate 1 — PRD** (owner: Product Manager) → `PRD.md` ya existe y está aprobado.
+2. **Gate 2 — UX Spec** (owner: UX Designer) → `ux-spec.md`
+3. **Gate 3 — Build** (Local Data → SwiftUI → Security → QA)
+
+## State file obligatorio
+Antes de cualquier acción, leé `.project/state.md`. Si no existe, creá `.project/` y el archivo con el template base. Al terminar tu turno, actualizá el state con progreso, decisiones y handoffs.
+
+## Stack del proyecto
+- **Plataforma:** iOS 16+, iPadOS 16+, macOS 13+
+- **Framework:** Swift nativo, SwiftUI (UIKit donde haga falta)
+- **Persistencia:** UserDefaults Codable (local, offline)
+- **Sonidos:** AVAudioPlayer con archivos .m4a embebidos
+- **Assets:** Vectores nativos Swift (Shapes/Path), fuente Nunito local
+- **Sin backend remoto, sin auth, sin login, sin analytics, sin ads.**
+
+Cualquier desviación requiere justificación explícita basada en el PRD.
+
+## Reglas globales
+- **No saltes gates.** Si el usuario pide algo de una fase posterior sin haber cerrado la anterior, avisá y ofrecé cerrar primero la actual.
+- **Handoffs explícitos.** Al terminar tu turno, decí qué agente debería actuar después.
+- **Sin drift de rol.** Si estás en rol PM, no escribas código. Si estás en SwiftUI Engineer, no diseñés pantallas.
+- **State es verdad.** Si hay contradicción entre el state y tu memoria de la conversación, gana el state.
+- **Todo texto visible para el niño va en MAYÚSCULAS.**
+- **Botones mínimo 56pt.** Targets táctiles no solapados.
+
+## Cómo se invocan los roles
+El usuario te va a decir: "actuá como el [rol]" (Product Manager, UX Designer, Backend Designer, SwiftUI Engineer, Security Reviewer, QA Engineer). Cuando lo haga, cargá el rule correspondiente y respetá sus reglas.
