@@ -1,7 +1,7 @@
 # Project State
 
 ## Fase actual
-backend
+frontend
 
 ## Gate status
 - [x] Gate 1: PRD aprobado
@@ -16,11 +16,15 @@ backend
 - 2026-04-29 Product Manager: Escudos y camisetas en vectores nativos estilizados (no oficiales).
 - 2026-04-29 Product Manager: iPad landscape. macOS ventana adaptable.
 - 2026-04-29 Product Manager: MVP 3-4 semanas.
+- 2026-04-29 Local Data Designer: UserDefaults Codable para persistencia. Sin Core Data en MVP.
+- 2026-04-29 Local Data Designer: AVAudioPlayer con categoría .ambient (respeta silencio).
+- 2026-04-29 Local Data Designer: ContentVersion = 1 para migración futura.
 
 ## Handoffs pendientes
 - [x] product-manager → ux-designer: PRD aprobado, pasar a UX Spec
 - [x] ux-designer → backend-designer: UX spec generado y aprobado
-- [ ] backend-designer → swiftui-engineer: falta backend-spec
+- [x] backend-designer → swiftui-engineer: backend-spec generado y aprobado
+- [ ] swiftui-engineer → security-reviewer: falta implementación completa
 
 ## Open questions para el usuario
 - (ninguna, todas cerradas en PRD sección 10)
