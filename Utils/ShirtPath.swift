@@ -150,7 +150,7 @@ enum ShirtPath {
     
     static func scaled(to size: CGFloat) -> Path {
         let scale = size / 240
-        var transform = CGAffineTransform(scaleX: scale, y: scale)
+        let transform = CGAffineTransform(scaleX: scale, y: scale)
         return master.applying(transform)
     }
 }
