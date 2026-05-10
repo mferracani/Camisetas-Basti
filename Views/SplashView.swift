@@ -4,15 +4,13 @@ struct SplashView: View {
     @State private var revealPct: Double = 0
     @State private var isComplete = false
     let onComplete: () -> Void
-    
+
     var body: some View {
-        ZStack {
-            Color(hex: "#FEF9E7").ignoresSafeArea()
-            
-            VStack(spacing: 40) {
-                Spacer()
-                
-                ZStack {
+        GeometryReader { geo in
+            ZStack {
+                Color(hex: "#FEF9E7").ignoresSafeArea()
+
+                HStack(spacing: 72) {
                     ShirtView(
                         team: Team(
                             id: "splash",
@@ -23,31 +21,33 @@ struct SplashView: View {
                             crest: Crest(shape: .round, text: "CB", colors: ["#FFC93C", "#3D2A1F"])
                         ),
                         kit: "home",
-                        size: 200,
+                        size: min(geo.size.height * 0.48, 360),
                         mode: .partial,
                         revealPct: revealPct
                     )
+                    .shadow(color: Color(hex: "#3D2A1F").opacity(0.14), radius: 24, x: 0, y: 18)
+
+                    VStack(alignment: .leading, spacing: 28) {
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text("CAMISETAS")
+                                .font(.custom("Nunito-Black", size: min(geo.size.width * 0.06, 82)))
+                                .foregroundColor(Color(hex: "#3D2A1F"))
+
+                            Text("BASTI")
+                                .font(.custom("Nunito-Black", size: min(geo.size.width * 0.06, 82)))
+                                .foregroundColor(Color(hex: "#FF7B3D"))
+                        }
+                        .opacity(revealPct > 0.8 ? 1 : 0)
+                        .animation(.easeIn(duration: 0.5), value: revealPct)
+
+                        Text("TOCA PARA JUGAR")
+                            .font(.custom("Nunito-Black", size: 22))
+                            .foregroundColor(Color(hex: "#7A4E1B").opacity(0.6))
+                            .opacity(isComplete ? 1 : 0)
+                    }
                 }
-                
-                VStack(spacing: 8) {
-                    Text("CAMISETAS")
-                        .font(.custom("Nunito-Black", size: 42))
-                        .foregroundColor(Color(hex: "#3D2A1F"))
-                    
-                    Text("BASTI")
-                        .font(.custom("Nunito-Black", size: 42))
-                        .foregroundColor(Color(hex: "#FF7B3D"))
-                }
-                .opacity(revealPct > 0.8 ? 1 : 0)
-                .animation(.easeIn(duration: 0.5), value: revealPct)
-                
-                Spacer()
-                
-                Text("TOCA PARA JUGAR")
-                    .font(.custom("Nunito-Black", size: 18))
-                    .foregroundColor(Color(hex: "#7A4E1B").opacity(0.6))
-                    .opacity(isComplete ? 1 : 0)
-                    .padding(.bottom, 40)
+                .frame(maxWidth: 1100, maxHeight: .infinity)
+                .padding(.horizontal, 64)
             }
         }
         .onAppear {
@@ -59,12 +59,12 @@ struct SplashView: View {
             }
         }
     }
-    
+
     private func animateReveal() {
         let steps = 60
         let duration = 1.5
         let stepDuration = duration / Double(steps)
-        
+
         for i in 0...steps {
             DispatchQueue.main.asyncAfter(deadline: .now() + Double(i) * stepDuration) {
                 revealPct = Double(i) / Double(steps)

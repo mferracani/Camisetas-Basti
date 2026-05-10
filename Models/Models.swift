@@ -27,6 +27,7 @@ struct Team: Codable, Identifiable, Hashable {
 struct Kit: Codable, Hashable {
     let pattern: Pattern
     let colors: [String]
+    var assetName: String? = nil
 }
 
 // MARK: - Pattern
@@ -57,6 +58,7 @@ struct Crest: Codable, Hashable {
     let shape: Shape
     let text: String
     let colors: [String]
+    var assetName: String? = nil
 }
 
 // MARK: - ShirtProgress
@@ -72,7 +74,7 @@ struct ShirtProgress: Codable, Equatable {
         return min(1.0, Double(revealed) / Double(total))
     }
     
-    var isCompleted: Bool { pct >= 1.0 }
+    var isCompleted: Bool { pct >= 0.85 }
     
     /// Legacy key for storage compatibility
     var storageKey: String { "\(teamId).\(kit)" }
@@ -117,20 +119,22 @@ extension AppState {
     func discoveredShirts(for countryId: String, teams: [Team]) -> Int {
         var count = 0
         for team in teams {
-            let homeKey = "\(countryId).\(team.id).home"
-            let awayKey = "\(countryId).\(team.id).away"
-            if progress[homeKey]?.status == 2 { count += 1 }
-            if progress[awayKey]?.status == 2 { count += 1 }
+            if isShirtDiscovered(countryId: countryId, teamId: team.id, kit: "home") { count += 1 }
+            if isShirtDiscovered(countryId: countryId, teamId: team.id, kit: "away") { count += 1 }
         }
         return count
     }
     
     func discoveredShirts(for countryId: String, teamId: String) -> Int {
-        let homeKey = "\(countryId).\(teamId).home"
-        let awayKey = "\(countryId).\(teamId).away"
         var count = 0
-        if progress[homeKey]?.status == 2 { count += 1 }
-        if progress[awayKey]?.status == 2 { count += 1 }
+        if isShirtDiscovered(countryId: countryId, teamId: teamId, kit: "home") { count += 1 }
+        if isShirtDiscovered(countryId: countryId, teamId: teamId, kit: "away") { count += 1 }
         return count
+    }
+
+    private func isShirtDiscovered(countryId: String, teamId: String, kit: String) -> Bool {
+        let currentKey = "\(teamId).\(kit)"
+        let legacyKey = "\(countryId).\(teamId).\(kit)"
+        return progress[currentKey]?.status == 2 || progress[legacyKey]?.status == 2
     }
 }

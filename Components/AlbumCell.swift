@@ -6,7 +6,7 @@ struct AlbumCell: View {
     let progress: ShirtProgress
     let onTap: () -> Void
     
-    private var isCompleted: Bool { progress.pct >= 1.0 }
+    private var isCompleted: Bool { progress.isCompleted }
     private var isStarted: Bool { progress.revealed > 0 }
     
     var body: some View {

@@ -1,16 +1,17 @@
 import XCTest
 @testable import Camisetas_Basti
 
+@MainActor
 final class ProgressStoreTests: XCTestCase {
     
-    override func setUp() {
-        super.setUp()
+    override func setUp() async throws {
+        try await super.setUp()
         ProgressStore.shared.resetAll()
     }
     
-    override func tearDown() {
+    override func tearDown() async throws {
         ProgressStore.shared.resetAll()
-        super.tearDown()
+        try await super.tearDown()
     }
     
     // MARK: - Progress lifecycle

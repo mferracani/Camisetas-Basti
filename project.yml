@@ -48,8 +48,9 @@ targets:
       - target: CamisetasBasti
     settings:
       base:
-        TEST_HOST: ""
-        BUNDLE_LOADER: ""
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Camisetas Basti.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Camisetas Basti"
+        BUNDLE_LOADER: "$(TEST_HOST)"
         SWIFT_VERSION: "6.0"
         IPHONEOS_DEPLOYMENT_TARGET: "16.0"
 
@@ -62,5 +63,6 @@ targets:
       - target: CamisetasBasti
     settings:
       base:
+        GENERATE_INFOPLIST_FILE: YES
         SWIFT_VERSION: "6.0"
         IPHONEOS_DEPLOYMENT_TARGET: "16.0"

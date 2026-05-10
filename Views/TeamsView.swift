@@ -5,43 +5,40 @@ struct TeamsView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var selectedTeam: Team?
     @State private var selectedKit: String?
-    
-    private let columns = [
-        GridItem(.flexible(), spacing: 16),
-        GridItem(.flexible(), spacing: 16),
-        GridItem(.flexible(), spacing: 16)
-    ]
-    
+
     var body: some View {
-        ZStack {
-            Color(hex: "#FEF9E7").ignoresSafeArea()
-            
-            VStack(spacing: 0) {
-                // Header
-                HStack {
-                    BackButton {
-                        dismiss()
+        GeometryReader { geo in
+            ZStack {
+                Color(hex: "#FEF9E7").ignoresSafeArea()
+
+                VStack(spacing: 0) {
+                    HStack {
+                        BackButton {
+                            dismiss()
+                        }
+                        Spacer()
+                        Text(country.name.uppercased())
+                            .font(.custom("Nunito-Black", size: min(geo.size.width * 0.034, 42)))
+                            .foregroundColor(Color(hex: "#3D2A1F"))
+                        Spacer()
+                        Circle().fill(Color.clear).frame(width: 64, height: 64)
                     }
-                    Spacer()
-                    Text(country.name.uppercased())
-                        .font(.custom("Nunito-Black", size: 28))
-                        .foregroundColor(Color(hex: "#3D2A1F"))
-                    Spacer()
-                    Circle().fill(Color.clear).frame(width: 64, height: 64)
-                }
-                .padding(.horizontal, 24)
-                .padding(.top, 16)
-                
-                ScrollView {
-                    LazyVGrid(columns: columns, spacing: 20) {
-                        ForEach(CAMI_DATA.teams(for: country.id)) { team in
-                            TeamCard(team: team) {
-                                SoundManager.shared.playTap()
-                                selectedTeam = team
+                    .padding(.horizontal, 40)
+                    .padding(.top, 24)
+
+                    ScrollView {
+                        LazyVGrid(columns: teamGridColumns(for: geo.size.width), spacing: 24) {
+                            ForEach(CAMI_DATA.teams(for: country.id)) { team in
+                                TeamCard(team: team, shirtSize: teamShirtSize(for: geo.size.width)) {
+                                    SoundManager.shared.playTap()
+                                    selectedTeam = team
+                                }
                             }
                         }
+                        .frame(maxWidth: 1180)
+                        .padding(.horizontal, 40)
+                        .padding(.vertical, 30)
                     }
-                    .padding(24)
                 }
             }
         }
@@ -53,27 +50,28 @@ struct TeamsView: View {
 
 struct TeamCard: View {
     let team: Team
+    let shirtSize: CGFloat
     let action: () -> Void
-    
+
     @State private var isPressed = false
-    
+
     private var homeCompleted: Bool {
         ProgressStore.shared.progress(for: team.id, kit: "home").pct >= 1.0
     }
     private var awayCompleted: Bool {
         ProgressStore.shared.progress(for: team.id, kit: "away").pct >= 1.0
     }
-    
+
     var body: some View {
         Button(action: action) {
             VStack(spacing: 8) {
                 ZStack {
                     if homeCompleted {
-                        ShirtView(team: team, kit: "home", size: 80, mode: .color)
+                        ShirtView(team: team, kit: "home", size: shirtSize, mode: .color)
                     } else {
-                        ShirtView(team: team, kit: "home", size: 80, mode: .gray)
+                        ShirtView(team: team, kit: "home", size: shirtSize, mode: .gray)
                     }
-                    
+
                     // Kit indicator dots
                     HStack(spacing: 6) {
                         Circle()
@@ -85,10 +83,10 @@ struct TeamCard: View {
                             .frame(width: 10, height: 10)
                             .overlay(Circle().stroke(Color.white, lineWidth: 1.5))
                     }
-                    .offset(y: 46)
+                    .offset(y: shirtSize * 0.58)
                 }
-                .frame(height: 96)
-                
+                .frame(height: shirtSize * 1.22)
+
                 Text(team.name.uppercased())
                     .font(.custom("Nunito-Bold", size: 12))
                     .foregroundColor(Color(hex: "#3D2A1F"))
@@ -117,4 +115,13 @@ struct TeamCard: View {
                 .onEnded { _ in isPressed = false }
         )
     }
+}
+
+private func teamGridColumns(for width: CGFloat) -> [GridItem] {
+    let count = width >= 1200 ? 5 : width >= 900 ? 4 : 3
+    return Array(repeating: GridItem(.flexible(), spacing: 24), count: count)
+}
+
+private func teamShirtSize(for width: CGFloat) -> CGFloat {
+    min(max(width * 0.085, 92), 132)
 }

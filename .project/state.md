@@ -22,6 +22,8 @@ frontend
 - 2026-04-29 Local Data Designer: UserDefaults Codable para persistencia. Sin Core Data en MVP.
 - 2026-04-29 Local Data Designer: AVAudioPlayer con categoría .ambient (respeta silencio).
 - 2026-04-29 Local Data Designer: ContentVersion = 1 para migración futura.
+- 2026-05-09 SwiftUI Engineer: Se incorporaron assets reales nombrados para Barcelona home, Manchester City home, Real Madrid crest y Bayern Munich crest. El resto conserva fallback vectorial hasta recibir assets correctos.
+- 2026-05-09 SwiftUI Engineer: Se importaron las camisetas identificadas desde `/Users/matiasferracani/Camisetas Basti/Camisetas` a `Resources/Assets.xcassets/Shirts`, se mapearon 46 `assetName` en `CAMI_DATA.swift` y `ShirtView` ahora muestra el asset real también en estado bloqueado/desaturado.
 
 ## Handoffs completados
 - [x] product-manager → ux-designer: PRD aprobado, pasar a UX Spec
