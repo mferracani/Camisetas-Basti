@@ -115,6 +115,10 @@ struct ShirtProgressLegacy: Codable, Equatable {
 extension AppState {
     static let shirtsPerCountry = 20
     static let totalShirts = 120
+
+    static func totalShirts(for countryId: String) -> Int {
+        CAMI_DATA.teams(for: countryId).count * 2
+    }
     
     func discoveredShirts(for countryId: String, teams: [Team]) -> Int {
         var count = 0

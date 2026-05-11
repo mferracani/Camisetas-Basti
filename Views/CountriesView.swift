@@ -15,7 +15,7 @@ struct CountriesView: View {
                             dismiss()
                         }
                         Spacer()
-                        Text("ELIGE UN PAÍS")
+                        Text("ELIGE UNA SECCIÓN")
                             .font(.custom("Nunito-Black", size: min(geo.size.width * 0.034, 42)))
                             .foregroundColor(Color(hex: "#3D2A1F"))
                         Spacer()

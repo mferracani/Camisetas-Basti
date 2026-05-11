@@ -8,6 +8,8 @@ struct FlagView: View {
     
     var body: some View {
         switch country.id {
+        case "wc26":
+            worldCupFlag
         case "arg":
             argentinaFlag
         case "eng":
@@ -23,6 +25,24 @@ struct FlagView: View {
         default:
             Rectangle().fill(Color.gray)
         }
+    }
+
+    private var worldCupFlag: some View {
+        ZStack {
+            LinearGradient(
+                colors: [Color(hex: "#123C69"), Color(hex: "#2D9CDB")],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            VStack(spacing: height * 0.06) {
+                Text("🏆")
+                    .font(.system(size: height * 0.34))
+                Text("2026")
+                    .font(.custom("Nunito-Black", size: height * 0.18))
+                    .foregroundColor(.white)
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: rounded))
     }
     
     private var argentinaFlag: some View {

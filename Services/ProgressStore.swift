@@ -54,7 +54,7 @@ final class ProgressStore: ObservableObject {
                 
                 let teams = CAMI_DATA.teams(for: countryId)
                 let discovered = state.discoveredShirts(for: countryId, teams: teams)
-                if discovered >= AppState.shirtsPerCountry {
+                if discovered >= AppState.totalShirts(for: countryId) {
                     state.trophies[countryId] = true
                 }
                 
@@ -95,7 +95,7 @@ final class ProgressStore: ObservableObject {
         
         let teams = CAMI_DATA.teams(for: countryId)
         let discovered = state.discoveredShirts(for: countryId, teams: teams)
-        if discovered >= AppState.shirtsPerCountry {
+        if discovered >= AppState.totalShirts(for: countryId) {
             state.trophies[countryId] = true
         }
         
@@ -141,5 +141,4 @@ final class ProgressStore: ObservableObject {
         save()
     }
 }
-
 

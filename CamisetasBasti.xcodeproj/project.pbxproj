@@ -27,6 +27,7 @@
 		B41723CF7B02EC7E72047071 /* PaintEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 762734F94A165B1536621F47 /* PaintEngineTests.swift */; };
 		B533BBD1DBA922B1D5CE2CC5 /* TeamDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE06B1874A1E5CB918D23E86 /* TeamDetailView.swift */; };
 		C62F5CCAEADBD91F2B667232 /* BigKidButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FAA31BF179D543F0D87BED4 /* BigKidButton.swift */; };
+		C7A5F3A6644043B96F639151 /* TournamentSimulatorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5925DBF3E79794D97A67C82 /* TournamentSimulatorView.swift */; };
 		CA819750B155F3CDA276C2A1 /* ColorName.swift in Sources */ = {isa = PBXBuildFile; fileRef = 926FCB2E96BDFBD21DEA5D00 /* ColorName.swift */; };
 		DAF0142365254A49392E492D /* GamesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB7FECA966030804CBCD5F99 /* GamesView.swift */; };
 		E3D39E283F24F2A987007011 /* BackButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70426947CA9BA97915FDCD84 /* BackButton.swift */; };
@@ -83,6 +84,7 @@
 		B02B5BBAD77FA3E55B602D64 /* CamisetasBastiApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CamisetasBastiApp.swift; sourceTree = "<group>"; };
 		BE06B1874A1E5CB918D23E86 /* TeamDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TeamDetailView.swift; sourceTree = "<group>"; };
 		D0309408F9EEC136685FD1C0 /* CamisetasBastiTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = CamisetasBastiTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		D5925DBF3E79794D97A67C82 /* TournamentSimulatorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TournamentSimulatorView.swift; sourceTree = "<group>"; };
 		D86F38F370EA943FDD1DCDCB /* CrestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrestView.swift; sourceTree = "<group>"; };
 		DC27532731ECF8482C10656E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		F6B61EC2ABA669CFCE8D80AA /* CAMI_DATA.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CAMI_DATA.swift; sourceTree = "<group>"; };
@@ -142,6 +144,7 @@
 				5BC487F9E3C96207FE628776 /* SplashView.swift */,
 				BE06B1874A1E5CB918D23E86 /* TeamDetailView.swift */,
 				936953927B3BA81F94DE9CD4 /* TeamsView.swift */,
+				D5925DBF3E79794D97A67C82 /* TournamentSimulatorView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -353,6 +356,7 @@
 				85F715B3C23518039702FBFF /* SplashView.swift in Sources */,
 				B533BBD1DBA922B1D5CE2CC5 /* TeamDetailView.swift in Sources */,
 				9CE820A86550511FAB2A1072 /* TeamsView.swift in Sources */,
+				C7A5F3A6644043B96F639151 /* TournamentSimulatorView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

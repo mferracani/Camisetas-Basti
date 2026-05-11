@@ -35,7 +35,7 @@ final class CamisetasBastiUITests: XCTestCase {
         app.buttons["JUGAR 🎨"].tap()
         
         // 5. Countries screen
-        XCTAssertTrue(app.staticTexts["ELIGE UN PAÍS"].waitForExistence(timeout: 2))
+        XCTAssertTrue(app.staticTexts["ELIGE UNA SECCIÓN"].waitForExistence(timeout: 2))
         
         // Tap first country (Argentina)
         let argentinaCard = app.buttons.element(matching: NSPredicate(format: "label CONTAINS[c] %@", "ARGENTINA"))
@@ -54,8 +54,8 @@ final class CamisetasBastiUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["LOCAL"].waitForExistence(timeout: 2))
         XCTAssertTrue(app.staticTexts["VISITANTE"].exists)
         
-        // Tap PINTAR
-        app.buttons["PINTAR 🖌️"].tap()
+        // Tap LOCAL to open paint
+        app.buttons["LOCAL"].tap()
         
         // 8. Paint screen
         XCTAssertTrue(app.staticTexts["DESLIZÁ TU DEDO PARA PINTAR"].waitForExistence(timeout: 2))
@@ -94,7 +94,7 @@ final class CamisetasBastiUITests: XCTestCase {
         
         // Go to JUGAR
         app.buttons["JUGAR 🎨"].tap()
-        XCTAssertTrue(app.staticTexts["ELIGE UN PAÍS"].waitForExistence(timeout: 2))
+        XCTAssertTrue(app.staticTexts["ELIGE UNA SECCIÓN"].waitForExistence(timeout: 2))
         
         // Back to home
         app.buttons["Back"].tap()

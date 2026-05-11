@@ -4,6 +4,7 @@ struct HomeView: View {
     @State private var showAlbum = false
     @State private var showGames = false
     @State private var showCountries = false
+    @State private var showTournament = false
     @State private var trophyBounce = false
 
     var body: some View {
@@ -83,6 +84,17 @@ struct HomeView: View {
                                         showAlbum = true
                                     }
                                 )
+
+                                BigKidButton(
+                                    title: "SIMULAR TORNEO",
+                                    icon: "🏆",
+                                    variant: .sky,
+                                    size: .md,
+                                    action: {
+                                        SoundManager.shared.playTap()
+                                        showTournament = true
+                                    }
+                                )
                             }
                         }
                     }
@@ -100,6 +112,9 @@ struct HomeView: View {
         }
         .fullScreenCover(isPresented: $showGames) {
             GamesView()
+        }
+        .fullScreenCover(isPresented: $showTournament) {
+            TournamentSimulatorView()
         }
     }
 }
