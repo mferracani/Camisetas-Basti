@@ -59,7 +59,7 @@
 		0334935DC31B8A036FF593E2 /* CamisetasBastiUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CamisetasBastiUITests.swift; sourceTree = "<group>"; };
 		0FAA31BF179D543F0D87BED4 /* BigKidButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BigKidButton.swift; sourceTree = "<group>"; };
 		15560836092BE03FFC841988 /* ProgressStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressStore.swift; sourceTree = "<group>"; };
-		1C68FA8D81A9FFCC9098D098 /* CamisetasBasti.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = CamisetasBasti.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		1C68FA8D81A9FFCC9098D098 /* Camisetas Basti.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Camisetas Basti.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		29B6F57AE22D644396CCCA85 /* AlbumView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlbumView.swift; sourceTree = "<group>"; };
 		47FD99742A8677A1E7284FEB /* AlbumCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlbumCell.swift; sourceTree = "<group>"; };
 		4C931DEA97DE4115D3EE444A /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
@@ -152,7 +152,7 @@
 		954186FC296F90CE05F326A7 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				1C68FA8D81A9FFCC9098D098 /* CamisetasBasti.app */,
+				1C68FA8D81A9FFCC9098D098 /* Camisetas Basti.app */,
 				D0309408F9EEC136685FD1C0 /* CamisetasBastiTests.xctest */,
 				97C80FB2EF692C8EB4E88ACA /* CamisetasBastiUITests.xctest */,
 			);
@@ -229,7 +229,7 @@
 			packageProductDependencies = (
 			);
 			productName = CamisetasBasti;
-			productReference = 1C68FA8D81A9FFCC9098D098 /* CamisetasBasti.app */;
+			productReference = 1C68FA8D81A9FFCC9098D098 /* Camisetas Basti.app */;
 			productType = "com.apple.product-type.application";
 		};
 		86D842F189CE0E27186A4B8C /* CamisetasBastiTests */ = {
@@ -278,7 +278,6 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					86D082BEF962ECFD4D890FC4 = {
-						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
 					};
 					CE807A9223C9F062E1846B20 = {
@@ -505,7 +504,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "";
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = Q2TG5FA7M7;
 				INFOPLIST_FILE = Resources/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -594,7 +593,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "";
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = Q2TG5FA7M7;
 				INFOPLIST_FILE = Resources/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
