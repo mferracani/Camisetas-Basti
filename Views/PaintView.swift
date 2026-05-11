@@ -13,10 +13,12 @@ struct PaintView: View {
     private var kitData: Kit { kit == "away" ? team.away : team.home }
     private let threshold: Double = 0.85
     private let brushSize: CGFloat = 44
+    private let shirtAspectRatio: CGFloat = 280.0 / 240.0
 
     var body: some View {
         GeometryReader { geo in
             let currentShirtSize = shirtSize(for: geo.size)
+            let currentShirtHeight = currentShirtSize * shirtAspectRatio
 
             ZStack {
                 Color(hex: "#FEF9E7").ignoresSafeArea()
@@ -69,14 +71,16 @@ struct PaintView: View {
                     .padding(.top, 20)
 
                     ZStack {
-                        ShirtView(team: team, kit: kit, size: currentShirtSize, mode: .color)
-
                         ShirtView(team: team, kit: kit, size: currentShirtSize, mode: .gray)
+
+                        ShirtView(team: team, kit: kit, size: currentShirtSize, mode: .color)
                             .mask(
                                 PaintMaskView(engine: engine, size: currentShirtSize)
                             )
 
                         PaintCanvas(engine: engine, brushSize: brushSize)
+                            .frame(width: currentShirtSize, height: currentShirtHeight)
+                            .contentShape(Rectangle())
 
                         if showGhost && engine.revealPct < threshold {
                             Text("👆")
@@ -232,13 +236,10 @@ class PaintEngine: ObservableObject, @unchecked Sendable {
         UIGraphicsBeginImageContextWithOptions(size, false, 1)
         guard let ctx = UIGraphicsGetCurrentContext() else { return nil }
 
-        ctx.setFillColor(UIColor.black.cgColor)
-        ctx.fill(CGRect(origin: .zero, size: size))
-
-        ctx.setFillColor(UIColor.white.cgColor)
         let cellW = size.width / CGFloat(gridSize)
         let cellH = size.height / CGFloat(gridSize)
 
+        ctx.setFillColor(UIColor.white.cgColor)
         for y in 0..<gridSize {
             for x in 0..<gridSize {
                 if grid[y][x] {
@@ -270,7 +271,7 @@ struct PaintMaskView: View {
                 .aspectRatio(contentMode: .fill)
                 .frame(width: size, height: size * (280.0/240.0))
         } else {
-            Color.black
+            Color.clear
                 .frame(width: size, height: size * (280.0/240.0))
         }
     }
