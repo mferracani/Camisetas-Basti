@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct TeamDetailView: View {
+    let country: Country
     let team: Team
     @Environment(\.dismiss) private var dismiss
     @State private var showPaint = false
@@ -34,6 +35,9 @@ struct TeamDetailView: View {
                     }
                     .padding(.horizontal, 40)
                     .padding(.top, 24)
+
+                    TeamIdentityHeader(country: country, team: team, size: identitySize(for: geo.size))
+                        .padding(.top, 12)
 
                     HStack(spacing: 72) {
                         KitOption(
@@ -73,6 +77,38 @@ struct TeamDetailView: View {
         }
         .fullScreenCover(isPresented: $showPaint) {
             PaintView(team: team, kit: selectedKit)
+        }
+    }
+}
+
+struct TeamIdentityHeader: View {
+    let country: Country
+    let team: Team
+    let size: CGFloat
+
+    private var isWorldCup: Bool {
+        country.id == "wc26"
+    }
+
+    var body: some View {
+        VStack(spacing: 6) {
+            ZStack {
+                Circle()
+                    .fill(Color.white)
+                    .shadow(color: Color.black.opacity(0.08), radius: 10, x: 0, y: 5)
+
+                if isWorldCup {
+                    Text(nationalFlag(for: team))
+                        .font(.system(size: size * 0.56))
+                } else {
+                    CrestView(crest: team.crest, size: size * 0.76)
+                }
+            }
+            .frame(width: size, height: size)
+
+            Text(isWorldCup ? "SELECCIÓN" : "ESCUDO")
+                .font(.custom("Nunito-Black", size: 13))
+                .foregroundColor(Color(hex: "#7A4E1B").opacity(0.55))
         }
     }
 }
@@ -128,5 +164,9 @@ struct KitOption: View {
 }
 
 private func detailShirtSize(for size: CGSize) -> CGFloat {
-    min(max(size.height * 0.42, 220), 360)
+    min(max(size.height * 0.34, 210), 330)
+}
+
+private func identitySize(for size: CGSize) -> CGFloat {
+    min(max(size.height * 0.11, 72), 110)
 }

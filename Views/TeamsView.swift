@@ -29,7 +29,7 @@ struct TeamsView: View {
                     ScrollView {
                         LazyVGrid(columns: teamGridColumns(for: geo.size.width), spacing: 24) {
                             ForEach(CAMI_DATA.teams(for: country.id)) { team in
-                                TeamCard(team: team, shirtSize: teamShirtSize(for: geo.size.width)) {
+                                TeamCard(country: country, team: team, shirtSize: teamShirtSize(for: geo.size.width)) {
                                     SoundManager.shared.playTap()
                                     selectedTeam = team
                                 }
@@ -43,12 +43,13 @@ struct TeamsView: View {
             }
         }
         .fullScreenCover(item: $selectedTeam) { team in
-            TeamDetailView(team: team)
+            TeamDetailView(country: country, team: team)
         }
     }
 }
 
 struct TeamCard: View {
+    let country: Country
     let team: Team
     let shirtSize: CGFloat
     let action: () -> Void
@@ -60,6 +61,9 @@ struct TeamCard: View {
     }
     private var awayCompleted: Bool {
         ProgressStore.shared.progress(for: team.id, kit: "away").pct >= 1.0
+    }
+    private var isWorldCup: Bool {
+        country.id == "wc26"
     }
 
     var body: some View {
@@ -84,6 +88,9 @@ struct TeamCard: View {
                             .overlay(Circle().stroke(Color.white, lineWidth: 1.5))
                     }
                     .offset(y: shirtSize * 0.58)
+
+                    teamBadge
+                        .offset(x: shirtSize * 0.42, y: -shirtSize * 0.42)
                 }
                 .frame(height: shirtSize * 1.22)
 
@@ -115,6 +122,23 @@ struct TeamCard: View {
                 .onEnded { _ in isPressed = false }
         )
     }
+
+    @ViewBuilder
+    private var teamBadge: some View {
+        if isWorldCup {
+            Text(nationalFlag(for: team))
+                .font(.system(size: max(30, shirtSize * 0.32)))
+                .frame(width: shirtSize * 0.42, height: shirtSize * 0.42)
+                .background(Circle().fill(Color.white))
+                .overlay(Circle().stroke(Color(hex: "#E8E4DB"), lineWidth: 1.5))
+                .shadow(color: Color.black.opacity(0.12), radius: 5, x: 0, y: 3)
+        } else {
+            CrestView(crest: team.crest, size: shirtSize * 0.46)
+                .padding(shirtSize * 0.05)
+                .background(Circle().fill(Color.white))
+                .shadow(color: Color.black.opacity(0.12), radius: 5, x: 0, y: 3)
+        }
+    }
 }
 
 private func teamGridColumns(for width: CGFloat) -> [GridItem] {
@@ -124,4 +148,24 @@ private func teamGridColumns(for width: CGFloat) -> [GridItem] {
 
 private func teamShirtSize(for width: CGFloat) -> CGFloat {
     min(max(width * 0.085, 92), 132)
+}
+
+func nationalFlag(for team: Team) -> String {
+    switch team.id {
+    case "sel_argentina": return "🇦🇷"
+    case "sel_brazil": return "🇧🇷"
+    case "sel_uruguay": return "🇺🇾"
+    case "sel_mexico": return "🇲🇽"
+    case "sel_usa": return "🇺🇸"
+    case "sel_spain": return "🇪🇸"
+    case "sel_england": return "🏴"
+    case "sel_france": return "🇫🇷"
+    case "sel_germany": return "🇩🇪"
+    case "sel_italy": return "🇮🇹"
+    case "sel_netherlands": return "🇳🇱"
+    case "sel_croatia": return "🇭🇷"
+    case "sel_belgium": return "🇧🇪"
+    case "sel_portugal": return "🇵🇹"
+    default: return "🏳️"
+    }
 }
