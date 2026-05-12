@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "argentinos_juniors_home.png",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}
