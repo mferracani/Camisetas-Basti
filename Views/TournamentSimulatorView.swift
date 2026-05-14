@@ -693,8 +693,15 @@ private struct MatchSimulationModal: View {
         if let goal = result.goalEvents.last(where: { abs($0.minute - matchMinute) <= 2 }) {
             return "GOOOL DE \(team(for: goal.side).short.uppercased())"
         }
-        let events = ["ARRANCA EL PARTIDO", "ATACA \(context.match.home?.short.uppercased() ?? "LOCAL")", "MUEVE LA PELOTA", "REMATE", "ATAJA EL ARQUERO", "ATACA \(context.match.away?.short.uppercased() ?? "VISITANTE")"]
+        if let shot = result.goalEvents.last(where: { (shotWindowStart(for: $0.minute)...$0.minute).contains(matchMinute) }) {
+            return "REMATE DE \(team(for: shot.side).short.uppercased())"
+        }
+        let events = ["ARRANCA EL PARTIDO", "PASE DE \(context.match.home?.short.uppercased() ?? "LOCAL")", "ATACA \(context.match.home?.short.uppercased() ?? "LOCAL")", "RECUPERA \(context.match.away?.short.uppercased() ?? "VISITANTE")", "PASE AL MEDIO", "ATACA \(context.match.away?.short.uppercased() ?? "VISITANTE")"]
         return events[min(events.count - 1, Int(progress * Double(events.count)))]
+    }
+
+    private func shotWindowStart(for minute: Int) -> Int {
+        max(0, minute - 5)
     }
 
     private var scoreboard: some View {
@@ -812,20 +819,29 @@ private struct SoccerPitchView: View {
     let awayScore: Int
     let reduceMotion: Bool
 
-    private var ballPosition: CGPoint {
-        if reduceMotion {
-            return CGPoint(x: progress < 0.5 ? 0.38 : 0.62, y: 0.5)
-        }
-        let wave = sin(progress * .pi * 8)
-        let lane = cos(progress * .pi * 5)
-        if let goal = result.goalEvents.first(where: { abs(Double($0.minute) / 90 - progress) < 0.035 }) {
-            return goal.side == .home ? CGPoint(x: 0.92, y: 0.5) : CGPoint(x: 0.08, y: 0.5)
-        }
-        return CGPoint(x: 0.5 + wave * 0.34, y: 0.5 + lane * 0.22)
-    }
+    private let homeBases: [CGPoint] = [
+        CGPoint(x: 0.12, y: 0.50),
+        CGPoint(x: 0.28, y: 0.25),
+        CGPoint(x: 0.30, y: 0.75),
+        CGPoint(x: 0.46, y: 0.38),
+        CGPoint(x: 0.50, y: 0.64),
+        CGPoint(x: 0.66, y: 0.50)
+    ]
+    private let awayBases: [CGPoint] = [
+        CGPoint(x: 0.88, y: 0.50),
+        CGPoint(x: 0.72, y: 0.25),
+        CGPoint(x: 0.70, y: 0.75),
+        CGPoint(x: 0.54, y: 0.38),
+        CGPoint(x: 0.50, y: 0.64),
+        CGPoint(x: 0.34, y: 0.50)
+    ]
 
     var body: some View {
         GeometryReader { geo in
+            let play = visualPlay
+            let homeStyle = jerseyStyle(for: context.match.home, fallback: ("#75AADB", "#FFFFFF"), opponent: context.match.away)
+            let awayStyle = jerseyStyle(for: context.match.away, fallback: ("#E2272F", "#111111"), opponent: context.match.home)
+
             ZStack {
                 RoundedRectangle(cornerRadius: 28)
                     .fill(
@@ -842,29 +858,44 @@ private struct SoccerPitchView: View {
 
                 ForEach(0..<6, id: \.self) { index in
                     PlayerDot(
-                        color: teamColor(context.match.home, fallback: "#75AADB"),
-                        border: .white,
+                        style: homeStyle,
                         label: context.match.home?.short.prefix(1).uppercased() ?? "L"
                     )
-                    .position(playerPosition(index: index, home: true, size: geo.size))
+                    .scaleEffect(play.side == .home && play.playerIndex == index ? 1.14 : 1)
+                    .position(playerPosition(index: index, home: true, play: play, size: geo.size))
+                    .animation(reduceMotion ? nil : .easeInOut(duration: 0.45), value: progress)
                 }
 
                 ForEach(0..<6, id: \.self) { index in
                     PlayerDot(
-                        color: teamColor(context.match.away, fallback: "#E2272F"),
-                        border: .black.opacity(0.45),
+                        style: awayStyle,
                         label: context.match.away?.short.prefix(1).uppercased() ?? "V"
                     )
-                    .position(playerPosition(index: index, home: false, size: geo.size))
+                    .scaleEffect(play.side == .away && play.playerIndex == index ? 1.14 : 1)
+                    .position(playerPosition(index: index, home: false, play: play, size: geo.size))
+                    .animation(reduceMotion ? nil : .easeInOut(duration: 0.45), value: progress)
                 }
+
+                BallTrail(from: play.from, to: play.ball, isShot: play.isShot)
+                    .stroke(
+                        play.isShot ? Color(hex: "#FFC93C").opacity(0.82) : Color.white.opacity(0.34),
+                        style: StrokeStyle(lineWidth: play.isShot ? 5 : 3, lineCap: .round, dash: play.isShot ? [] : [7, 7])
+                    )
+                    .frame(width: geo.size.width, height: geo.size.height)
 
                 Circle()
                     .fill(Color.white)
-                    .frame(width: 18, height: 18)
+                    .frame(width: play.isShot ? 22 : 18, height: play.isShot ? 22 : 18)
                     .overlay(Circle().stroke(Color.black.opacity(0.35), lineWidth: 2))
                     .shadow(color: Color.black.opacity(0.25), radius: 5, x: 0, y: 3)
-                    .position(x: ballPosition.x * geo.size.width, y: ballPosition.y * geo.size.height)
-                    .animation(reduceMotion ? nil : .easeInOut(duration: 0.55), value: progress)
+                    .position(x: play.ball.x * geo.size.width, y: play.ball.y * geo.size.height)
+                    .animation(reduceMotion ? nil : .easeInOut(duration: play.isShot ? 0.18 : 0.46), value: progress)
+
+                if play.isShot {
+                    ShotBurst(side: play.side)
+                        .position(x: play.ball.x * geo.size.width, y: play.ball.y * geo.size.height)
+                        .transition(.scale.combined(with: .opacity))
+                }
 
                 if recentGoal {
                     Text("GOOOL")
@@ -886,39 +917,202 @@ private struct SoccerPitchView: View {
         result.goalEvents.contains { abs(Double($0.minute) / 90 - progress) < 0.04 }
     }
 
-    private func playerPosition(index: Int, home: Bool, size: CGSize) -> CGPoint {
-        let columns: [CGFloat] = home ? [0.12, 0.28, 0.38, 0.46, 0.34, 0.2] : [0.88, 0.72, 0.62, 0.54, 0.66, 0.8]
-        let rows: [CGFloat] = [0.5, 0.28, 0.7, 0.45, 0.18, 0.82]
-        let motionX = reduceMotion ? 0 : CGFloat(sin(progress * .pi * Double(index + 2))) * 16
-        let motionY = reduceMotion ? 0 : CGFloat(cos(progress * .pi * Double(index + 3))) * 12
-        return CGPoint(
-            x: columns[index] * size.width + motionX,
-            y: rows[index] * size.height + motionY
+    private var visualPlay: MatchVisualPlay {
+        if reduceMotion {
+            let side: BracketSlotSide = progress < 0.5 ? .home : .away
+            let base = point(for: side, index: progress < 0.5 ? 3 : 4)
+            return MatchVisualPlay(side: side, playerIndex: 3, ball: base, from: base, isShot: false)
+        }
+
+        if let goal = currentGoalMoment {
+            let goalProgress = normalizedGoalProgress(for: goal)
+            let shooter = point(for: goal.side, index: 5)
+            let goalMouth = goal.side == .home ? CGPoint(x: 0.982, y: 0.50) : CGPoint(x: 0.018, y: 0.50)
+            let start = goalProgress < 0 ? point(for: goal.side, index: 4) : shooter
+            let clamped = min(1, max(0, goalProgress))
+            let ball = interpolate(from: start, to: goalMouth, progress: clamped)
+            return MatchVisualPlay(
+                side: goal.side,
+                playerIndex: clamped < 0.28 ? 4 : 5,
+                ball: ball,
+                from: shooter,
+                isShot: clamped > 0.45
+            )
+        }
+
+        let segmentCount = 18
+        let raw = progress * Double(segmentCount)
+        let segment = Int(raw) % segmentCount
+        let local = CGFloat(raw - floor(raw))
+        let side: BracketSlotSide = segment % 2 == 0 ? .home : .away
+        let route = side == .home ? [1, 3, 4, 5, 2, 4] : [2, 4, 3, 5, 1, 3]
+        let fromIndex = route[segment % route.count]
+        let toIndex = route[(segment + 1) % route.count]
+        let from = point(for: side, index: fromIndex)
+        let to = point(for: side, index: toIndex)
+        let eased = local * local * (3 - 2 * local)
+        return MatchVisualPlay(
+            side: side,
+            playerIndex: local < 0.55 ? fromIndex : toIndex,
+            ball: interpolate(from: from, to: to, progress: eased),
+            from: from,
+            isShot: false
         )
     }
 
-    private func teamColor(_ team: Team?, fallback: String) -> Color {
-        Color(hex: team?.home.colors.first ?? fallback)
+    private var currentGoalMoment: MatchGoalEvent? {
+        result.goalEvents.first { goal in
+            let goalProgress = Double(goal.minute) / 90
+            return progress >= goalProgress - 0.055 && progress <= goalProgress + 0.035
+        }
+    }
+
+    private func normalizedGoalProgress(for goal: MatchGoalEvent) -> CGFloat {
+        let goalProgress = Double(goal.minute) / 90
+        return CGFloat((progress - (goalProgress - 0.055)) / 0.055)
+    }
+
+    private func playerPosition(index: Int, home: Bool, play: MatchVisualPlay, size: CGSize) -> CGPoint {
+        let base = home ? homeBases[index] : awayBases[index]
+        let sideMatches = (home && play.side == .home) || (!home && play.side == .away)
+        let pressure = sideMatches ? interpolate(from: base, to: play.ball, progress: index == play.playerIndex ? 0.22 : 0.06) : base
+        let motionX = reduceMotion ? 0 : CGFloat(sin(progress * .pi * Double(index + 2))) * (sideMatches ? 7 : 4)
+        let motionY = reduceMotion ? 0 : CGFloat(cos(progress * .pi * Double(index + 3))) * (sideMatches ? 6 : 3)
+        return CGPoint(
+            x: pressure.x * size.width + motionX,
+            y: pressure.y * size.height + motionY
+        )
+    }
+
+    private func point(for side: BracketSlotSide, index: Int) -> CGPoint {
+        switch side {
+        case .home: return homeBases[index]
+        case .away: return awayBases[index]
+        }
+    }
+
+    private func interpolate(from: CGPoint, to: CGPoint, progress: CGFloat) -> CGPoint {
+        CGPoint(
+            x: from.x + (to.x - from.x) * progress,
+            y: from.y + (to.y - from.y) * progress
+        )
+    }
+
+    private func jerseyStyle(for team: Team?, fallback: (String, String), opponent: Team?) -> JerseyStyle {
+        let colors = team?.home.colors ?? [fallback.0, fallback.1]
+        let opponentColors = opponent?.home.colors ?? []
+        let primary = colors.first ?? fallback.0
+        let secondary = colors.dropFirst().first ?? fallback.1
+        let resolvedPrimary = colorsAreTooClose(primary, opponentColors.first) && colors.count > 1 ? secondary : primary
+        let resolvedSecondary = resolvedPrimary == secondary ? primary : secondary
+        return JerseyStyle(primaryHex: resolvedPrimary, secondaryHex: resolvedSecondary)
+    }
+
+    private func colorsAreTooClose(_ first: String, _ second: String?) -> Bool {
+        guard let second else { return false }
+        let a = RGB(hex: first)
+        let b = RGB(hex: second)
+        let distance = abs(a.r - b.r) + abs(a.g - b.g) + abs(a.b - b.b)
+        return distance < 0.42
     }
 }
 
 private struct PlayerDot: View {
-    let color: Color
-    let border: Color
+    let style: JerseyStyle
     let label: String
 
     var body: some View {
-        Circle()
-            .fill(color)
+        ZStack {
+            Circle()
+                .fill(style.primary)
+            Rectangle()
+                .fill(style.secondary)
+                .frame(width: 12)
+                .rotationEffect(.degrees(-18))
+                .offset(x: 1)
+                .clipShape(Circle())
+            Circle()
+                .stroke(style.border, lineWidth: 3)
+            Text(label)
+                .font(.custom("Nunito-Black", size: 12))
+                .foregroundColor(style.text)
+                .shadow(color: style.textShadow, radius: 1, x: 0, y: 1)
+        }
             .frame(width: 34, height: 34)
-            .overlay(Circle().stroke(border, lineWidth: 3))
-            .overlay(
-                Text(label)
-                    .font(.custom("Nunito-Black", size: 12))
-                    .foregroundColor(.white)
-            )
             .shadow(color: Color.black.opacity(0.22), radius: 5, x: 0, y: 3)
     }
+}
+
+private struct MatchVisualPlay {
+    let side: BracketSlotSide
+    let playerIndex: Int
+    let ball: CGPoint
+    let from: CGPoint
+    let isShot: Bool
+}
+
+private struct BallTrail: Shape {
+    let from: CGPoint
+    let to: CGPoint
+    let isShot: Bool
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let start = CGPoint(x: from.x * rect.width, y: from.y * rect.height)
+        let end = CGPoint(x: to.x * rect.width, y: to.y * rect.height)
+        let control = CGPoint(x: (start.x + end.x) / 2, y: min(start.y, end.y) - (isShot ? 34 : 16))
+        path.move(to: start)
+        path.addQuadCurve(to: end, control: control)
+        return path
+    }
+}
+
+private struct ShotBurst: View {
+    let side: BracketSlotSide
+
+    var body: some View {
+        Image(systemName: side == .home ? "arrow.right.circle.fill" : "arrow.left.circle.fill")
+            .font(.system(size: 34, weight: .black))
+            .foregroundColor(Color(hex: "#FFC93C"))
+            .shadow(color: Color.black.opacity(0.3), radius: 4, x: 0, y: 3)
+    }
+}
+
+private struct JerseyStyle {
+    let primaryHex: String
+    let secondaryHex: String
+
+    var primary: Color { Color(hex: primaryHex) }
+    var secondary: Color { Color(hex: secondaryHex) }
+    var border: Color { luminance(primaryHex) > 0.72 ? Color(hex: secondaryHex) : Color.white }
+    var text: Color { luminance(primaryHex) > 0.62 ? Color(hex: "#1C2833") : .white }
+    var textShadow: Color { luminance(primaryHex) > 0.62 ? .white.opacity(0.5) : .black.opacity(0.45) }
+}
+
+private struct RGB {
+    let r: Double
+    let g: Double
+    let b: Double
+
+    init(hex: String) {
+        let cleaned = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+        var int: UInt64 = 0
+        Scanner(string: cleaned).scanHexInt64(&int)
+        if cleaned.count == 3 {
+            r = Double((int >> 8) * 17) / 255
+            g = Double((int >> 4 & 0xF) * 17) / 255
+            b = Double((int & 0xF) * 17) / 255
+        } else {
+            r = Double(int >> 16 & 0xFF) / 255
+            g = Double(int >> 8 & 0xFF) / 255
+            b = Double(int & 0xFF) / 255
+        }
+    }
+}
+
+private func luminance(_ hex: String) -> Double {
+    let rgb = RGB(hex: hex)
+    return 0.2126 * rgb.r + 0.7152 * rgb.g + 0.0722 * rgb.b
 }
 
 private struct SoccerPitchLines: Shape {

@@ -14,6 +14,7 @@ ready-for-testflight
 - Cada partido simulado durara entre 30 y 45 segundos con resultados plausibles y aleatorios.
 - UX define un control segmentado Manual/Partidos y modal full-screen de partido con marcador, cancha, eventos y cierre final.
 - Implementacion completada: modo Manual/Partidos, modal de partido animado, resultados plausibles, penales y avance automatico del ganador.
+- Ajuste de realismo: la simulacion ahora usa pases entre jugadores, remates visibles al arco, pelota entrando al arco y camisetas con colores mas distinguibles.
 - Build de simulador y tests pasan.
 
 ## Handoffs pendientes
