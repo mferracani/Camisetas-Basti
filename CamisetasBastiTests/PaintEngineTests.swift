@@ -46,6 +46,15 @@ final class PaintEngineTests: XCTestCase {
         // Should not crash; reveal should remain 0 or minimal
         XCTAssertGreaterThanOrEqual(engine.revealPct, 0.0)
     }
+
+    func testPaintInWhiteBackgroundDoesNotIncreaseReveal() {
+        let size = CGSize(width: 400, height: 466)
+        let whiteBackgroundPoint = CGPoint(x: 32, y: 32)
+
+        engine.paint(at: whiteBackgroundPoint, in: size, brushSize: 44)
+
+        XCTAssertEqual(engine.revealPct, 0.0)
+    }
     
     func testMultiplePaintsAccumulate() {
         let size = CGSize(width: 400, height: 466)

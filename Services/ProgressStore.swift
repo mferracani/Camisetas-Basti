@@ -33,6 +33,9 @@ final class ProgressStore: ObservableObject {
         guard let legacy = state.progress[key] else {
             return ShirtProgress(teamId: teamId, kit: kit, revealed: 0, total: 1600)
         }
+        if legacy.status == 2 {
+            return ShirtProgress(teamId: teamId, kit: kit, revealed: 1600, total: 1600)
+        }
         // Migrate from legacy format if needed
         let revealed = Int((legacy.revealPct ?? 0) * 1600)
         return ShirtProgress(teamId: teamId, kit: kit, revealed: revealed, total: 1600)
@@ -41,6 +44,9 @@ final class ProgressStore: ObservableObject {
     func save(progress: ShirtProgress) {
         let key = progress.storageKey
         let wasCompleted = state.progress[key]?.status == 2
+        if wasCompleted && !progress.isCompleted {
+            return
+        }
         let legacy = ShirtProgressLegacy(key: key, status: progress.isCompleted ? 2 : 1, revealPct: progress.pct)
         state.progress[key] = legacy
         
@@ -141,4 +147,3 @@ final class ProgressStore: ObservableObject {
         save()
     }
 }
-

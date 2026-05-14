@@ -168,11 +168,15 @@ class PaintEngine: ObservableObject, @unchecked Sendable {
     @Published var maskImage: UIImage?
 
     private var grid: [[Bool]] = []
+    private var paintableGrid: [[Bool]] = []
     private var gridSize: Int = 0
+    private var paintableCount: Int = 0
 
     func setup(gridSize: Int) {
         self.gridSize = gridSize
         self.grid = Array(repeating: Array(repeating: false, count: gridSize), count: gridSize)
+        self.paintableGrid = Self.makePaintableGrid(gridSize: gridSize)
+        self.paintableCount = paintableGrid.flatMap { $0 }.filter { $0 }.count
         updateMask()
     }
 
@@ -188,7 +192,7 @@ class PaintEngine: ObservableObject, @unchecked Sendable {
             for dx in -brushCells...brushCells {
                 let x = centerX + dx
                 let y = centerY + dy
-                if x >= 0, x < gridSize, y >= 0, y < gridSize {
+                if x >= 0, x < gridSize, y >= 0, y < gridSize, paintableGrid[y][x] {
                     let cellCenter = CGPoint(x: (CGFloat(x) + 0.5) * cellW, y: (CGFloat(y) + 0.5) * cellH)
                     let dist = hypot(cellCenter.x - point.x, cellCenter.y - point.y)
                     if dist < brushSize * 0.6, !grid[y][x] {
@@ -212,7 +216,7 @@ class PaintEngine: ObservableObject, @unchecked Sendable {
     }
 
     private func updateProgress() {
-        let total = gridSize * gridSize
+        let total = max(paintableCount, 1)
         let revealed = grid.flatMap { $0 }.filter { $0 }.count
         revealPct = Double(revealed) / Double(total)
     }
@@ -226,6 +230,19 @@ class PaintEngine: ObservableObject, @unchecked Sendable {
         } else {
             DispatchQueue.main.async { [weak self] in
                 self?.maskImage = image
+            }
+        }
+    }
+
+    private static func makePaintableGrid(gridSize: Int) -> [[Bool]] {
+        guard gridSize > 0 else { return [] }
+        return (0..<gridSize).map { y in
+            (0..<gridSize).map { x in
+                let normalizedPoint = CGPoint(
+                    x: (CGFloat(x) + 0.5) / CGFloat(gridSize) * 240,
+                    y: (CGFloat(y) + 0.5) / CGFloat(gridSize) * 280
+                )
+                return ShirtPath.master.contains(normalizedPoint)
             }
         }
     }
@@ -244,7 +261,7 @@ class PaintEngine: ObservableObject, @unchecked Sendable {
             for x in 0..<gridSize {
                 if grid[y][x] {
                     let rect = CGRect(x: CGFloat(x) * cellW, y: CGFloat(y) * cellH, width: cellW + 1, height: cellH + 1)
-                    ctx.fillEllipse(in: rect)
+                    ctx.fill(rect)
                 }
             }
         }

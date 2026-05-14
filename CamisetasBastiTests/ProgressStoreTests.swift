@@ -42,6 +42,27 @@ final class ProgressStoreTests: XCTestCase {
         XCTAssertTrue(loaded.isCompleted)
         XCTAssertEqual(loaded.pct, 1.0)
     }
+
+    func testCompletedThresholdLoadsAsFullyPainted() {
+        let completedAtThreshold = ShirtProgress(teamId: "river", kit: "home", revealed: 1360, total: 1600)
+        ProgressStore.shared.save(progress: completedAtThreshold)
+
+        let loaded = ProgressStore.shared.progress(for: "river", kit: "home")
+        XCTAssertTrue(loaded.isCompleted)
+        XCTAssertEqual(loaded.pct, 1.0)
+    }
+
+    func testRepaintDoesNotOverwriteCompletedProgress() {
+        let completed = ShirtProgress(teamId: "river", kit: "home", revealed: 1600, total: 1600)
+        ProgressStore.shared.save(progress: completed)
+
+        let repaintFromZero = ShirtProgress(teamId: "river", kit: "home", revealed: 0, total: 1600)
+        ProgressStore.shared.save(progress: repaintFromZero)
+
+        let loaded = ProgressStore.shared.progress(for: "river", kit: "home")
+        XCTAssertTrue(loaded.isCompleted)
+        XCTAssertEqual(loaded.pct, 1.0)
+    }
     
     func testTotalStarsIncrementOnComplete() {
         let initialStars = ProgressStore.shared.state.totalStars

@@ -4,14 +4,15 @@ struct TeamDetailView: View {
     let country: Country
     let team: Team
     @Environment(\.dismiss) private var dismiss
+    @ObservedObject private var store = ProgressStore.shared
     @State private var showPaint = false
     @State private var selectedKit: String = "home"
 
     private var homeProgress: ShirtProgress {
-        ProgressStore.shared.progress(for: team.id, kit: "home")
+        store.progress(for: team.id, kit: "home")
     }
     private var awayProgress: ShirtProgress {
-        ProgressStore.shared.progress(for: team.id, kit: "away")
+        store.progress(for: team.id, kit: "away")
     }
 
     var body: some View {
@@ -122,8 +123,7 @@ struct KitOption: View {
     let shirtSize: CGFloat
     let action: () -> Void
 
-    private var isCompleted: Bool { progress.pct >= 1.0 }
-    private var isStarted: Bool { progress.revealed > 0 }
+    private var isCompleted: Bool { progress.isCompleted }
 
     var body: some View {
         Button(action: action) {
@@ -136,10 +136,20 @@ struct KitOption: View {
                             .foregroundColor(Color(hex: "#7DDB8B"))
                             .background(Circle().fill(Color.white))
                             .offset(x: 52, y: -52)
-                    } else if isStarted {
-                        ShirtView(team: team, kit: kit, size: shirtSize, mode: .partial, revealPct: Double(progress.revealed) / Double(progress.total))
                     } else {
                         ShirtView(team: team, kit: kit, size: shirtSize, mode: .gray)
+                    }
+
+                    VStack {
+                        Spacer()
+                        Text(isCompleted ? "↻ REPINTAR" : "PINTAR")
+                            .font(.custom("Nunito-Black", size: 14))
+                            .foregroundColor(isCompleted ? Color(hex: "#7A4E1B") : Color(hex: "#FF7B3D"))
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .background(Capsule().fill(Color.white.opacity(0.94)))
+                            .shadow(color: Color.black.opacity(0.06), radius: 6, x: 0, y: 3)
+                            .padding(.bottom, 8)
                     }
                 }
                 .frame(height: shirtSize * 1.2)
