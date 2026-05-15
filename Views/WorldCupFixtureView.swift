@@ -297,15 +297,19 @@ private struct WorldCupKnockoutMatchCard: View {
             knockoutScoreRow(team: match.home, score: homeBinding, isWinner: winner?.id == match.home?.id)
             knockoutScoreRow(team: match.away, score: awayBinding, isWinner: winner?.id == match.away?.id)
 
+            if match.isTied(scores: scores), match.home != nil, match.away != nil {
+                penaltyPicker
+            }
+
             if let winner {
                 HStack(spacing: 6) {
                     Image(systemName: "arrow.up.forward.circle.fill")
-                    Text("PASA \(winner.short)")
+                    Text(match.isTied(scores: scores) ? "PASA \(winner.short) POR PENALES" : "PASA \(winner.short)")
                 }
                 .font(.custom("Nunito-Black", size: 12))
                 .foregroundColor(Color(hex: "#22A06B"))
             } else if match.home != nil && match.away != nil {
-                Text("CARGÁ UN GANADOR")
+                Text(match.isTied(scores: scores) ? "ELEGÍ QUIÉN GANÓ POR PENALES" : "CARGÁ UN GANADOR")
                     .font(.custom("Nunito-Black", size: 11))
                     .foregroundColor(Color(hex: "#A88C6A"))
             } else {
@@ -320,6 +324,43 @@ private struct WorldCupKnockoutMatchCard: View {
         .background(Color.white)
         .cornerRadius(18)
         .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 4)
+    }
+
+    private var penaltyPicker: some View {
+        HStack(spacing: 8) {
+            Text("PENALES")
+                .font(.custom("Nunito-Black", size: 10))
+                .foregroundColor(Color(hex: "#A88C6A"))
+
+            if let home = match.home {
+                penaltyButton(team: home)
+            }
+            if let away = match.away {
+                penaltyButton(team: away)
+            }
+        }
+        .padding(8)
+        .background(RoundedRectangle(cornerRadius: 12).fill(Color(hex: "#FFF4D8")))
+    }
+
+    private func penaltyButton(team: FixtureTeam) -> some View {
+        Button {
+            SoundManager.shared.playTap()
+            var score = scores[match.id] ?? FixtureScore()
+            score.penaltyWinnerId = team.id
+            scores[match.id] = score
+        } label: {
+            Text(team.short)
+                .font(.custom("Nunito-Black", size: 11))
+                .foregroundColor(scorePenaltyWinnerId == team.id ? .white : Color(hex: "#8B5E2B"))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+                .background(
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(scorePenaltyWinnerId == team.id ? Color(hex: "#FF7B3D") : Color.white)
+                )
+        }
+        .buttonStyle(.plain)
     }
 
     private func knockoutScoreRow(team: FixtureTeam?, score: Binding<Int?>, isWinner: Bool) -> some View {
@@ -355,6 +396,7 @@ private struct WorldCupKnockoutMatchCard: View {
             set: { newValue in
                 var score = scores[match.id] ?? FixtureScore()
                 score.home = newValue
+                score.clearPenaltiesIfNeeded()
                 scores[match.id] = score.isEmpty ? nil : score
             }
         )
@@ -366,9 +408,14 @@ private struct WorldCupKnockoutMatchCard: View {
             set: { newValue in
                 var score = scores[match.id] ?? FixtureScore()
                 score.away = newValue
+                score.clearPenaltiesIfNeeded()
                 scores[match.id] = score.isEmpty ? nil : score
             }
         )
+    }
+
+    private var scorePenaltyWinnerId: String? {
+        scores[match.id]?.penaltyWinnerId
     }
 }
 
@@ -671,9 +718,20 @@ private struct FixtureMatch: Identifiable {
 private struct FixtureScore: Equatable {
     var home: Int?
     var away: Int?
+    var penaltyWinnerId: String?
 
-    var isEmpty: Bool { home == nil && away == nil }
+    var isEmpty: Bool { home == nil && away == nil && penaltyWinnerId == nil }
     var isComplete: Bool { home != nil && away != nil }
+    var isTied: Bool {
+        guard let home, let away else { return false }
+        return home == away
+    }
+
+    mutating func clearPenaltiesIfNeeded() {
+        if !isTied {
+            penaltyWinnerId = nil
+        }
+    }
 }
 
 private struct FixtureStanding {
@@ -729,10 +787,18 @@ private struct KnockoutFixtureMatch: Identifiable {
     let placeholder: String
 
     func winner(scores: [String: FixtureScore]) -> FixtureTeam? {
-        guard let home, let away, let score = scores[id], let homeGoals = score.home, let awayGoals = score.away, homeGoals != awayGoals else {
+        guard let home, let away, let score = scores[id], let homeGoals = score.home, let awayGoals = score.away else {
             return nil
         }
-        return homeGoals > awayGoals ? home : away
+        if homeGoals > awayGoals { return home }
+        if awayGoals > homeGoals { return away }
+        if score.penaltyWinnerId == home.id { return home }
+        if score.penaltyWinnerId == away.id { return away }
+        return nil
+    }
+
+    func isTied(scores: [String: FixtureScore]) -> Bool {
+        scores[id]?.isTied == true
     }
 }
 
