@@ -237,14 +237,18 @@ private struct WorldCupScoreRow: View {
     @Binding var scores: [String: FixtureScore]
 
     var body: some View {
-        HStack(spacing: 8) {
-            FixtureTeamLabel(team: match.home)
-            ScoreBox(value: homeBinding)
-            Text("-")
-                .font(.custom("Nunito-Black", size: 16))
-                .foregroundColor(Color(hex: "#A88C6A"))
-            ScoreBox(value: awayBinding)
-            FixtureTeamLabel(team: match.away, alignment: .trailing)
+        VStack(spacing: 6) {
+            FixtureScheduleLabel(schedule: match.schedule)
+
+            HStack(spacing: 8) {
+                FixtureTeamLabel(team: match.home)
+                ScoreBox(value: homeBinding)
+                Text("-")
+                    .font(.custom("Nunito-Black", size: 16))
+                    .foregroundColor(Color(hex: "#A88C6A"))
+                ScoreBox(value: awayBinding)
+                FixtureTeamLabel(team: match.away, alignment: .trailing)
+            }
         }
         .padding(8)
         .background(RoundedRectangle(cornerRadius: 14).fill(Color(hex: "#FEF9E7")))
@@ -293,6 +297,8 @@ private struct WorldCupKnockoutMatchCard: View {
                     .foregroundColor(Color(hex: "#A88C6A"))
                     .lineLimit(1)
             }
+
+            FixtureScheduleLabel(schedule: match.schedule)
 
             knockoutScoreRow(team: match.home, score: homeBinding, isWinner: winner?.id == match.home?.id)
             knockoutScoreRow(team: match.away, score: awayBinding, isWinner: winner?.id == match.away?.id)
@@ -441,6 +447,23 @@ private struct FixtureTeamLabel: View {
     }
 }
 
+private struct FixtureScheduleLabel: View {
+    let schedule: FixtureScheduleInfo
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Label(schedule.argentinaText, systemImage: "calendar")
+                .labelStyle(.titleAndIcon)
+            if let spainText = schedule.spainText {
+                Text("ESP \(spainText)")
+            }
+            Spacer(minLength: 0)
+        }
+        .font(.custom("Nunito-Black", size: 10))
+        .foregroundColor(Color(hex: "#8B5E2B"))
+    }
+}
+
 private struct ScoreBox: View {
     @Binding var value: Int?
 
@@ -508,6 +531,7 @@ private struct WorldCup2026Fixture {
                 number: definition.number,
                 id: "wc26_m\(definition.number)",
                 venue: definition.venue,
+                schedule: definition.schedule,
                 home: completeGroups ? home : nil,
                 away: completeGroups ? away : nil,
                 placeholder: "\(definition.homeSlot.label) vs \(definition.awaySlot.label)"
@@ -520,7 +544,16 @@ private struct WorldCup2026Fixture {
 
         let roundOf16 = makeWinnerRound(
             title: "OCTAVOS",
-            numbers: [(89, 74, 77, "Philadelphia"), (90, 73, 75, "Houston"), (91, 76, 78, "New York/New Jersey"), (92, 79, 80, "Ciudad de México"), (93, 83, 84, "Dallas"), (94, 81, 82, "Seattle"), (95, 86, 88, "Atlanta"), (96, 85, 87, "Vancouver")],
+            definitions: [
+                WinnerRoundDefinition(89, 74, 77, "Philadelphia", schedule("04/07", "18:00", "23:00")),
+                WinnerRoundDefinition(90, 73, 75, "Houston", schedule("04/07", "14:00", "19:00")),
+                WinnerRoundDefinition(91, 76, 78, "New York/New Jersey", schedule("05/07", "17:00", "22:00")),
+                WinnerRoundDefinition(92, 79, 80, "Ciudad de México", schedule("05/07", "21:00", "06/07 02:00")),
+                WinnerRoundDefinition(93, 83, 84, "Dallas", schedule("06/07", "16:00", "21:00")),
+                WinnerRoundDefinition(94, 81, 82, "Seattle", schedule("06/07", "21:00", "07/07 02:00")),
+                WinnerRoundDefinition(95, 86, 88, "Atlanta", schedule("07/07", "13:00", "18:00")),
+                WinnerRoundDefinition(96, 85, 87, "Vancouver", schedule("07/07", "17:00", "22:00"))
+            ],
             resolved: resolved,
             scores: scores
         )
@@ -529,7 +562,12 @@ private struct WorldCup2026Fixture {
 
         let quarters = makeWinnerRound(
             title: "CUARTOS",
-            numbers: [(97, 89, 90, "Boston"), (98, 93, 94, "Los Angeles"), (99, 91, 92, "Miami"), (100, 95, 96, "Kansas City")],
+            definitions: [
+                WinnerRoundDefinition(97, 89, 90, "Boston", schedule("09/07", "17:00", "22:00")),
+                WinnerRoundDefinition(98, 93, 94, "Los Angeles", schedule("10/07", "16:00")),
+                WinnerRoundDefinition(99, 91, 92, "Miami", schedule("11/07", "18:00")),
+                WinnerRoundDefinition(100, 95, 96, "Kansas City", schedule("11/07", "22:00"))
+            ],
             resolved: resolved,
             scores: scores
         )
@@ -538,7 +576,10 @@ private struct WorldCup2026Fixture {
 
         let semis = makeWinnerRound(
             title: "SEMIFINALES",
-            numbers: [(101, 97, 98, "Dallas"), (102, 99, 100, "Atlanta")],
+            definitions: [
+                WinnerRoundDefinition(101, 97, 98, "Dallas", schedule("14/07", "21:00")),
+                WinnerRoundDefinition(102, 99, 100, "Atlanta", schedule("15/07", "21:00"))
+            ],
             resolved: resolved,
             scores: scores
         )
@@ -547,7 +588,9 @@ private struct WorldCup2026Fixture {
 
         let final = makeWinnerRound(
             title: "FINAL",
-            numbers: [(104, 101, 102, "New York/New Jersey")],
+            definitions: [
+                WinnerRoundDefinition(104, 101, 102, "New York/New Jersey", schedule("19/07", "16:00"))
+            ],
             resolved: resolved,
             scores: scores
         )
@@ -559,20 +602,21 @@ private struct WorldCup2026Fixture {
 
     private func makeWinnerRound(
         title: String,
-        numbers: [(Int, Int, Int, String)],
+        definitions: [WinnerRoundDefinition],
         resolved: [Int: KnockoutFixtureMatch],
         scores: [String: FixtureScore]
     ) -> KnockoutRoundViewModel {
-        let matches = numbers.map { number, homeSource, awaySource, venue in
-            let home = resolved[homeSource]?.winner(scores: scores)
-            let away = resolved[awaySource]?.winner(scores: scores)
+        let matches = definitions.map { definition in
+            let home = resolved[definition.homeSource]?.winner(scores: scores)
+            let away = resolved[definition.awaySource]?.winner(scores: scores)
             return KnockoutFixtureMatch(
-                number: number,
-                id: "wc26_m\(number)",
-                venue: venue,
+                number: definition.number,
+                id: "wc26_m\(definition.number)",
+                venue: definition.venue,
+                schedule: definition.schedule,
                 home: home,
                 away: away,
-                placeholder: "Ganador M\(homeSource) vs Ganador M\(awaySource)"
+                placeholder: "Ganador M\(definition.homeSource) vs Ganador M\(definition.awaySource)"
             )
         }
         return KnockoutRoundViewModel(title: title, matches: matches)
@@ -656,9 +700,20 @@ private struct WorldCup2026Fixture {
     }
 
     private static func makeMatches(group: String, teams: [FixtureTeam]) -> [FixtureMatch] {
-        let pairs = [(0, 1), (2, 3), (0, 2), (1, 3), (0, 3), (1, 2)]
-        return pairs.enumerated().map { index, pair in
-            FixtureMatch(id: "wc26_g\(group)_m\(index + 1)", group: group, home: teams[pair.0], away: teams[pair.1])
+        let teamsById = Dictionary(uniqueKeysWithValues: teams.map { ($0.id, $0) })
+        guard let definitions = groupMatchDefinitions[group] else { return [] }
+
+        return definitions.enumerated().compactMap { index, definition in
+            guard let home = teamsById[definition.homeId], let away = teamsById[definition.awayId] else {
+                return nil
+            }
+            return FixtureMatch(
+                id: "wc26_g\(group)_m\(index + 1)",
+                group: group,
+                home: home,
+                away: away,
+                schedule: definition.schedule
+            )
         }
     }
 
@@ -668,22 +723,22 @@ private struct WorldCup2026Fixture {
 }
 
 private let roundOf32Definitions: [KnockoutDefinition] = [
-    KnockoutDefinition(73, .runnerUp("A"), .runnerUp("B"), "Los Angeles"),
-    KnockoutDefinition(74, .winner("E"), .thirdPlace(["A", "B", "C", "D", "F"], 74), "Boston"),
-    KnockoutDefinition(75, .winner("F"), .runnerUp("C"), "Monterrey"),
-    KnockoutDefinition(76, .winner("C"), .runnerUp("F"), "Houston"),
-    KnockoutDefinition(77, .winner("I"), .thirdPlace(["C", "D", "F", "G", "H"], 77), "New York/New Jersey"),
-    KnockoutDefinition(78, .runnerUp("E"), .runnerUp("I"), "Dallas"),
-    KnockoutDefinition(79, .winner("A"), .thirdPlace(["C", "E", "F", "H", "I"], 79), "Ciudad de México"),
-    KnockoutDefinition(80, .winner("L"), .thirdPlace(["E", "H", "I", "J", "K"], 80), "Atlanta"),
-    KnockoutDefinition(81, .winner("D"), .thirdPlace(["B", "E", "F", "I", "J"], 81), "San Francisco"),
-    KnockoutDefinition(82, .winner("G"), .thirdPlace(["A", "E", "H", "I", "J"], 82), "Seattle"),
-    KnockoutDefinition(83, .runnerUp("K"), .runnerUp("L"), "Toronto"),
-    KnockoutDefinition(84, .winner("H"), .runnerUp("J"), "Los Angeles"),
-    KnockoutDefinition(85, .winner("B"), .thirdPlace(["E", "F", "G", "I", "J"], 85), "Vancouver"),
-    KnockoutDefinition(86, .winner("J"), .runnerUp("H"), "Miami"),
-    KnockoutDefinition(87, .winner("K"), .thirdPlace(["D", "E", "I", "J", "L"], 87), "Kansas City"),
-    KnockoutDefinition(88, .runnerUp("D"), .runnerUp("G"), "Dallas")
+    KnockoutDefinition(73, .runnerUp("A"), .runnerUp("B"), "Los Angeles", schedule("28/06", "16:00", "22:00")),
+    KnockoutDefinition(74, .winner("E"), .thirdPlace(["A", "B", "C", "D", "F"], 74), "Boston", schedule("29/06", "17:30", "22:30")),
+    KnockoutDefinition(75, .winner("F"), .runnerUp("C"), "Monterrey", schedule("29/06", "22:00", "30/06 03:00")),
+    KnockoutDefinition(76, .winner("C"), .runnerUp("F"), "Houston", schedule("29/06", "14:00", "19:00")),
+    KnockoutDefinition(77, .winner("I"), .thirdPlace(["C", "D", "F", "G", "H"], 77), "New York/New Jersey", schedule("30/06", "18:00", "23:00")),
+    KnockoutDefinition(78, .runnerUp("E"), .runnerUp("I"), "Dallas", schedule("30/06", "14:00", "19:00")),
+    KnockoutDefinition(79, .winner("A"), .thirdPlace(["C", "E", "F", "H", "I"], 79), "Ciudad de México", schedule("30/06", "22:00", "01/07 03:00")),
+    KnockoutDefinition(80, .winner("L"), .thirdPlace(["E", "H", "I", "J", "K"], 80), "Atlanta", schedule("01/07", "13:00", "18:00")),
+    KnockoutDefinition(81, .winner("D"), .thirdPlace(["B", "E", "F", "I", "J"], 81), "San Francisco", schedule("01/07", "21:00", "02/07 02:00")),
+    KnockoutDefinition(82, .winner("G"), .thirdPlace(["A", "E", "H", "I", "J"], 82), "Seattle", schedule("01/07", "17:00", "22:00")),
+    KnockoutDefinition(83, .runnerUp("K"), .runnerUp("L"), "Toronto", schedule("02/07", "20:00", "03/07 01:00")),
+    KnockoutDefinition(84, .winner("H"), .runnerUp("J"), "Los Angeles", schedule("02/07", "16:00", "21:00")),
+    KnockoutDefinition(85, .winner("B"), .thirdPlace(["E", "F", "G", "I", "J"], 85), "Vancouver", schedule("03/07", "00:00", "05:00")),
+    KnockoutDefinition(86, .winner("J"), .runnerUp("H"), "Miami", schedule("03/07", "19:00", "04/07 00:00")),
+    KnockoutDefinition(87, .winner("K"), .thirdPlace(["D", "E", "I", "J", "L"], 87), "Kansas City", schedule("03/07", "22:30", "04/07 03:30")),
+    KnockoutDefinition(88, .runnerUp("D"), .runnerUp("G"), "Dallas", schedule("03/07", "15:00", "20:00"))
 ]
 
 private let thirdPlaceSlots: [ThirdPlaceSlot] = roundOf32Definitions.compactMap { definition in
@@ -692,6 +747,105 @@ private let thirdPlaceSlots: [ThirdPlaceSlot] = roundOf32Definitions.compactMap 
     }
     return nil
 }
+
+private let groupMatchDefinitions: [String: [GroupMatchDefinition]] = [
+    "A": [
+        GroupMatchDefinition("mexico", "south_africa", schedule("11/06", "16:00")),
+        GroupMatchDefinition("south_korea", "czechia", schedule("11/06", "23:00")),
+        GroupMatchDefinition("czechia", "south_africa", schedule("18/06", "13:00")),
+        GroupMatchDefinition("mexico", "south_korea", schedule("18/06", "22:00")),
+        GroupMatchDefinition("czechia", "mexico", schedule("24/06", "22:00", "25/06 03:00")),
+        GroupMatchDefinition("south_africa", "south_korea", schedule("24/06", "22:00", "25/06 03:00"))
+    ],
+    "B": [
+        GroupMatchDefinition("canada", "bosnia", schedule("12/06", "16:00")),
+        GroupMatchDefinition("qatar", "switzerland", schedule("13/06", "16:00")),
+        GroupMatchDefinition("switzerland", "bosnia", schedule("18/06", "16:00")),
+        GroupMatchDefinition("canada", "qatar", schedule("18/06", "19:00")),
+        GroupMatchDefinition("switzerland", "canada", schedule("24/06", "16:00", "21:00")),
+        GroupMatchDefinition("bosnia", "qatar", schedule("24/06", "16:00", "21:00"))
+    ],
+    "C": [
+        GroupMatchDefinition("brazil", "morocco", schedule("13/06", "19:00")),
+        GroupMatchDefinition("haiti", "scotland", schedule("13/06", "22:00")),
+        GroupMatchDefinition("scotland", "morocco", schedule("19/06", "19:00")),
+        GroupMatchDefinition("brazil", "haiti", schedule("19/06", "21:30")),
+        GroupMatchDefinition("scotland", "brazil", schedule("24/06", "19:00", "25/06 00:00")),
+        GroupMatchDefinition("morocco", "haiti", schedule("24/06", "19:00", "25/06 00:00"))
+    ],
+    "D": [
+        GroupMatchDefinition("usa", "paraguay", schedule("12/06", "22:00")),
+        GroupMatchDefinition("australia", "turkiye", schedule("14/06", "01:00")),
+        GroupMatchDefinition("turkiye", "paraguay", schedule("20/06", "00:00")),
+        GroupMatchDefinition("usa", "australia", schedule("19/06", "16:00")),
+        GroupMatchDefinition("turkiye", "usa", schedule("25/06", "23:00", "26/06 04:00")),
+        GroupMatchDefinition("paraguay", "australia", schedule("25/06", "23:00", "26/06 04:00"))
+    ],
+    "E": [
+        GroupMatchDefinition("ivory_coast", "ecuador", schedule("14/06", "20:00")),
+        GroupMatchDefinition("germany", "curacao", schedule("14/06", "14:00")),
+        GroupMatchDefinition("germany", "ivory_coast", schedule("20/06", "17:00")),
+        GroupMatchDefinition("ecuador", "curacao", schedule("20/06", "21:00")),
+        GroupMatchDefinition("curacao", "ivory_coast", schedule("25/06", "17:00", "22:00")),
+        GroupMatchDefinition("ecuador", "germany", schedule("25/06", "17:00", "22:00"))
+    ],
+    "F": [
+        GroupMatchDefinition("netherlands", "japan", schedule("14/06", "17:00")),
+        GroupMatchDefinition("sweden", "tunisia", schedule("14/06", "23:00")),
+        GroupMatchDefinition("netherlands", "sweden", schedule("20/06", "14:00")),
+        GroupMatchDefinition("tunisia", "japan", schedule("21/06", "01:00")),
+        GroupMatchDefinition("japan", "sweden", schedule("25/06", "20:00", "26/06 01:00")),
+        GroupMatchDefinition("tunisia", "netherlands", schedule("25/06", "20:00", "26/06 01:00"))
+    ],
+    "G": [
+        GroupMatchDefinition("iran", "new_zealand", schedule("15/06", "22:00")),
+        GroupMatchDefinition("belgium", "egypt", schedule("15/06", "16:00")),
+        GroupMatchDefinition("belgium", "iran", schedule("21/06", "16:00")),
+        GroupMatchDefinition("new_zealand", "egypt", schedule("21/06", "22:00")),
+        GroupMatchDefinition("egypt", "iran", schedule("27/06", "00:00", "05:00")),
+        GroupMatchDefinition("new_zealand", "belgium", schedule("27/06", "00:00", "05:00"))
+    ],
+    "H": [
+        GroupMatchDefinition("saudi_arabia", "uruguay", schedule("15/06", "19:00")),
+        GroupMatchDefinition("spain", "cape_verde", schedule("15/06", "13:00")),
+        GroupMatchDefinition("uruguay", "cape_verde", schedule("21/06", "19:00")),
+        GroupMatchDefinition("spain", "saudi_arabia", schedule("21/06", "13:00")),
+        GroupMatchDefinition("cape_verde", "saudi_arabia", schedule("26/06", "21:00", "27/06 02:00")),
+        GroupMatchDefinition("uruguay", "spain", schedule("26/06", "21:00", "27/06 02:00"))
+    ],
+    "I": [
+        GroupMatchDefinition("france", "senegal", schedule("16/06", "16:00")),
+        GroupMatchDefinition("iraq", "norway", schedule("16/06", "19:00")),
+        GroupMatchDefinition("norway", "senegal", schedule("22/06", "21:00")),
+        GroupMatchDefinition("france", "iraq", schedule("22/06", "18:00")),
+        GroupMatchDefinition("norway", "france", schedule("26/06", "16:00", "21:00")),
+        GroupMatchDefinition("senegal", "iraq", schedule("26/06", "16:00", "21:00"))
+    ],
+    "J": [
+        GroupMatchDefinition("argentina", "algeria", schedule("16/06", "22:00")),
+        GroupMatchDefinition("austria", "jordan", schedule("17/06", "01:00")),
+        GroupMatchDefinition("argentina", "austria", schedule("22/06", "14:00")),
+        GroupMatchDefinition("jordan", "algeria", schedule("23/06", "00:00")),
+        GroupMatchDefinition("algeria", "austria", schedule("27/06", "23:00", "28/06 04:00")),
+        GroupMatchDefinition("jordan", "argentina", schedule("27/06", "23:00", "28/06 04:00"))
+    ],
+    "K": [
+        GroupMatchDefinition("portugal", "dr_congo", schedule("17/06", "14:00")),
+        GroupMatchDefinition("uzbekistan", "colombia", schedule("17/06", "23:00")),
+        GroupMatchDefinition("portugal", "uzbekistan", schedule("23/06", "14:00")),
+        GroupMatchDefinition("colombia", "dr_congo", schedule("23/06", "23:00")),
+        GroupMatchDefinition("colombia", "portugal", schedule("27/06", "20:30", "28/06 01:30")),
+        GroupMatchDefinition("dr_congo", "uzbekistan", schedule("27/06", "20:30", "28/06 01:30"))
+    ],
+    "L": [
+        GroupMatchDefinition("ghana", "panama", schedule("17/06", "20:00")),
+        GroupMatchDefinition("england", "croatia", schedule("17/06", "17:00")),
+        GroupMatchDefinition("england", "ghana", schedule("23/06", "17:00")),
+        GroupMatchDefinition("panama", "croatia", schedule("23/06", "20:00")),
+        GroupMatchDefinition("panama", "england", schedule("27/06", "18:00", "23:00")),
+        GroupMatchDefinition("croatia", "ghana", schedule("27/06", "18:00", "23:00"))
+    ]
+]
 
 private struct FixtureTeam: Identifiable, Hashable {
     let id: String
@@ -713,6 +867,29 @@ private struct FixtureMatch: Identifiable {
     let group: String
     let home: FixtureTeam
     let away: FixtureTeam
+    let schedule: FixtureScheduleInfo
+}
+
+private struct GroupMatchDefinition {
+    let homeId: String
+    let awayId: String
+    let schedule: FixtureScheduleInfo
+
+    init(_ homeId: String, _ awayId: String, _ schedule: FixtureScheduleInfo) {
+        self.homeId = homeId
+        self.awayId = awayId
+        self.schedule = schedule
+    }
+}
+
+private struct FixtureScheduleInfo {
+    let dateArgentina: String
+    let timeArgentina: String
+    let spainText: String?
+
+    var argentinaText: String {
+        "\(dateArgentina) · ARG \(timeArgentina)"
+    }
 }
 
 private struct FixtureScore: Equatable {
@@ -764,12 +941,30 @@ private struct KnockoutDefinition {
     let homeSlot: FixtureSlot
     let awaySlot: FixtureSlot
     let venue: String
+    let schedule: FixtureScheduleInfo
 
-    init(_ number: Int, _ homeSlot: FixtureSlot, _ awaySlot: FixtureSlot, _ venue: String) {
+    init(_ number: Int, _ homeSlot: FixtureSlot, _ awaySlot: FixtureSlot, _ venue: String, _ schedule: FixtureScheduleInfo) {
         self.number = number
         self.homeSlot = homeSlot
         self.awaySlot = awaySlot
         self.venue = venue
+        self.schedule = schedule
+    }
+}
+
+private struct WinnerRoundDefinition {
+    let number: Int
+    let homeSource: Int
+    let awaySource: Int
+    let venue: String
+    let schedule: FixtureScheduleInfo
+
+    init(_ number: Int, _ homeSource: Int, _ awaySource: Int, _ venue: String, _ schedule: FixtureScheduleInfo) {
+        self.number = number
+        self.homeSource = homeSource
+        self.awaySource = awaySource
+        self.venue = venue
+        self.schedule = schedule
     }
 }
 
@@ -782,6 +977,7 @@ private struct KnockoutFixtureMatch: Identifiable {
     let number: Int
     let id: String
     let venue: String
+    let schedule: FixtureScheduleInfo
     let home: FixtureTeam?
     let away: FixtureTeam?
     let placeholder: String
@@ -811,6 +1007,10 @@ private struct KnockoutRoundViewModel: Identifiable {
 private struct KnockoutBracket {
     let rounds: [KnockoutRoundViewModel]
     let message: String?
+}
+
+private func schedule(_ dateArgentina: String, _ timeArgentina: String, _ spainText: String? = nil) -> FixtureScheduleInfo {
+    FixtureScheduleInfo(dateArgentina: dateArgentina, timeArgentina: timeArgentina, spainText: spainText)
 }
 
 private extension Array {
