@@ -607,7 +607,7 @@ private struct MatchSimulationModal: View {
     @State private var result: MatchSimulationResult
     @State private var duration: TimeInterval
 
-    private let timer = Timer.publish(every: 0.12, on: .main, in: .common).autoconnect()
+    private let timer = Timer.publish(every: 0.05, on: .main, in: .common).autoconnect()
 
     init(context: MatchSimulationContext, onFinish: @escaping (MatchSimulationResult) -> Void) {
         self.context = context
@@ -660,7 +660,7 @@ private struct MatchSimulationModal: View {
         }
         .onReceive(timer) { _ in
             guard !isFinished else { return }
-            elapsed = min(duration, elapsed + 0.12)
+            elapsed = min(duration, elapsed + 0.05)
             if elapsed >= duration {
                 withAnimation(.spring(response: 0.5, dampingFraction: 0.78)) {
                     isFinished = true
@@ -690,18 +690,37 @@ private struct MatchSimulationModal: View {
         if isFinished {
             return result.decidedByPenalties ? "SE DEFINE POR PENALES" : "FINAL DEL PARTIDO"
         }
-        if let goal = result.goalEvents.last(where: { abs($0.minute - matchMinute) <= 2 }) {
-            return "GOOOL DE \(team(for: goal.side).short.uppercased())"
+        if let chance = currentChance {
+            let local = normalizedChanceProgress(for: chance)
+            let teamName = team(for: chance.side).short.uppercased()
+            if chance.outcome == .goal && local > 0.86 {
+                return "GOOOL DE \(teamName)"
+            }
+            if chance.outcome == .save && local > 0.76 {
+                return "ATAJADÓN DEL ARQUERO"
+            }
+            if chance.outcome == .wide && local > 0.78 {
+                return "PASÓ CERCA \(teamName)"
+            }
+            if local > 0.54 {
+                return "REMATE DE \(teamName)"
+            }
+            return "ATACA \(teamName)"
         }
-        if let shot = result.goalEvents.last(where: { (shotWindowStart(for: $0.minute)...$0.minute).contains(matchMinute) }) {
-            return "REMATE DE \(team(for: shot.side).short.uppercased())"
-        }
-        let events = ["ARRANCA EL PARTIDO", "PASE DE \(context.match.home?.short.uppercased() ?? "LOCAL")", "ATACA \(context.match.home?.short.uppercased() ?? "LOCAL")", "RECUPERA \(context.match.away?.short.uppercased() ?? "VISITANTE")", "PASE AL MEDIO", "ATACA \(context.match.away?.short.uppercased() ?? "VISITANTE")"]
+        let events = ["ARRANCA EL PARTIDO", "PASE DE \(context.match.home?.short.uppercased() ?? "LOCAL")", "PRESIONA \(context.match.away?.short.uppercased() ?? "VISITANTE")", "CAMBIO DE FRENTE", "RECUPERA \(context.match.away?.short.uppercased() ?? "VISITANTE")", "TOCA Y VA \(context.match.home?.short.uppercased() ?? "LOCAL")"]
         return events[min(events.count - 1, Int(progress * Double(events.count)))]
     }
 
-    private func shotWindowStart(for minute: Int) -> Int {
-        max(0, minute - 5)
+    private var currentChance: MatchChanceEvent? {
+        result.chanceEvents.first { chance in
+            let chanceProgress = Double(chance.minute) / 90
+            return progress >= chanceProgress - 0.075 && progress <= chanceProgress + 0.035
+        }
+    }
+
+    private func normalizedChanceProgress(for chance: MatchChanceEvent) -> Double {
+        let chanceProgress = Double(chance.minute) / 90
+        return min(1, max(0, (progress - (chanceProgress - 0.075)) / 0.095))
     }
 
     private var scoreboard: some View {
@@ -750,7 +769,7 @@ private struct MatchSimulationModal: View {
     private var bottomEvent: some View {
         Text(currentEvent)
             .font(.custom("Nunito-Black", size: 24))
-            .foregroundColor(currentEvent.contains("GOOOL") ? Color(hex: "#FFC93C") : .white)
+            .foregroundColor((currentEvent.contains("GOOOL") || currentEvent.contains("ATAJAD")) ? Color(hex: "#FFC93C") : .white)
             .lineLimit(1)
             .minimumScaleFactor(0.65)
             .padding(.horizontal, 28)
@@ -820,20 +839,22 @@ private struct SoccerPitchView: View {
     let reduceMotion: Bool
 
     private let homeBases: [CGPoint] = [
-        CGPoint(x: 0.12, y: 0.50),
-        CGPoint(x: 0.28, y: 0.25),
-        CGPoint(x: 0.30, y: 0.75),
-        CGPoint(x: 0.46, y: 0.38),
-        CGPoint(x: 0.50, y: 0.64),
-        CGPoint(x: 0.66, y: 0.50)
+        CGPoint(x: 0.08, y: 0.50),
+        CGPoint(x: 0.24, y: 0.28),
+        CGPoint(x: 0.25, y: 0.72),
+        CGPoint(x: 0.43, y: 0.34),
+        CGPoint(x: 0.43, y: 0.66),
+        CGPoint(x: 0.61, y: 0.42),
+        CGPoint(x: 0.64, y: 0.58)
     ]
     private let awayBases: [CGPoint] = [
-        CGPoint(x: 0.88, y: 0.50),
-        CGPoint(x: 0.72, y: 0.25),
-        CGPoint(x: 0.70, y: 0.75),
-        CGPoint(x: 0.54, y: 0.38),
-        CGPoint(x: 0.50, y: 0.64),
-        CGPoint(x: 0.34, y: 0.50)
+        CGPoint(x: 0.92, y: 0.50),
+        CGPoint(x: 0.76, y: 0.28),
+        CGPoint(x: 0.75, y: 0.72),
+        CGPoint(x: 0.57, y: 0.34),
+        CGPoint(x: 0.57, y: 0.66),
+        CGPoint(x: 0.39, y: 0.42),
+        CGPoint(x: 0.36, y: 0.58)
     ]
 
     var body: some View {
@@ -856,24 +877,30 @@ private struct SoccerPitchView: View {
                     .stroke(Color.white.opacity(0.82), lineWidth: 3)
                     .padding(24)
 
-                ForEach(0..<6, id: \.self) { index in
+                ForEach(homeBases.indices, id: \.self) { index in
                     PlayerDot(
                         style: homeStyle,
-                        label: context.match.home?.short.prefix(1).uppercased() ?? "L"
+                        label: index == 0 ? "1" : context.match.home?.short.prefix(1).uppercased() ?? "L",
+                        isActive: play.side == .home && (play.playerIndex == index || play.receiverIndex == index),
+                        isGoalkeeper: index == 0
                     )
-                    .scaleEffect(play.side == .home && play.playerIndex == index ? 1.14 : 1)
+                    .scaleEffect(play.side == .home && play.playerIndex == index ? 1.16 : 1)
+                    .rotationEffect(.degrees(playerLean(index: index, home: true, play: play)))
                     .position(playerPosition(index: index, home: true, play: play, size: geo.size))
-                    .animation(reduceMotion ? nil : .easeInOut(duration: 0.45), value: progress)
+                    .animation(reduceMotion ? nil : .interactiveSpring(response: 0.34, dampingFraction: 0.76), value: progress)
                 }
 
-                ForEach(0..<6, id: \.self) { index in
+                ForEach(awayBases.indices, id: \.self) { index in
                     PlayerDot(
                         style: awayStyle,
-                        label: context.match.away?.short.prefix(1).uppercased() ?? "V"
+                        label: index == 0 ? "1" : context.match.away?.short.prefix(1).uppercased() ?? "V",
+                        isActive: play.side == .away && (play.playerIndex == index || play.receiverIndex == index),
+                        isGoalkeeper: index == 0
                     )
-                    .scaleEffect(play.side == .away && play.playerIndex == index ? 1.14 : 1)
+                    .scaleEffect(play.side == .away && play.playerIndex == index ? 1.16 : 1)
+                    .rotationEffect(.degrees(playerLean(index: index, home: false, play: play)))
                     .position(playerPosition(index: index, home: false, play: play, size: geo.size))
-                    .animation(reduceMotion ? nil : .easeInOut(duration: 0.45), value: progress)
+                    .animation(reduceMotion ? nil : .interactiveSpring(response: 0.34, dampingFraction: 0.76), value: progress)
                 }
 
                 BallTrail(from: play.from, to: play.ball, isShot: play.isShot)
@@ -883,16 +910,18 @@ private struct SoccerPitchView: View {
                     )
                     .frame(width: geo.size.width, height: geo.size.height)
 
-                Circle()
-                    .fill(Color.white)
-                    .frame(width: play.isShot ? 22 : 18, height: play.isShot ? 22 : 18)
-                    .overlay(Circle().stroke(Color.black.opacity(0.35), lineWidth: 2))
-                    .shadow(color: Color.black.opacity(0.25), radius: 5, x: 0, y: 3)
+                FootballView(isShot: play.isShot, spin: progress)
                     .position(x: play.ball.x * geo.size.width, y: play.ball.y * geo.size.height)
-                    .animation(reduceMotion ? nil : .easeInOut(duration: play.isShot ? 0.18 : 0.46), value: progress)
+                    .animation(reduceMotion ? nil : .easeInOut(duration: play.isShot ? 0.11 : 0.32), value: progress)
 
                 if play.isShot {
-                    ShotBurst(side: play.side)
+                    ShotBurst(side: play.side, outcome: play.outcome)
+                        .position(x: play.from.x * geo.size.width, y: play.from.y * geo.size.height)
+                        .transition(.scale.combined(with: .opacity))
+                }
+
+                if play.outcome == .save && play.localProgress > 0.76 {
+                    SaveFlash()
                         .position(x: play.ball.x * geo.size.width, y: play.ball.y * geo.size.height)
                         .transition(.scale.combined(with: .opacity))
                 }
@@ -902,6 +931,7 @@ private struct SoccerPitchView: View {
                         .font(.custom("Nunito-Black", size: 54))
                         .foregroundColor(Color(hex: "#FFC93C"))
                         .shadow(color: Color.black.opacity(0.5), radius: 8, x: 0, y: 5)
+                        .scaleEffect(1 + CGFloat(sin(progress * 90)) * 0.06)
                         .transition(.scale.combined(with: .opacity))
                 }
             }
@@ -914,38 +944,30 @@ private struct SoccerPitchView: View {
     }
 
     private var recentGoal: Bool {
-        result.goalEvents.contains { abs(Double($0.minute) / 90 - progress) < 0.04 }
+        guard let chance = currentChanceMoment, chance.outcome == .goal else { return false }
+        return normalizedChanceProgress(for: chance) > 0.86
     }
 
     private var visualPlay: MatchVisualPlay {
         if reduceMotion {
             let side: BracketSlotSide = progress < 0.5 ? .home : .away
             let base = point(for: side, index: progress < 0.5 ? 3 : 4)
-            return MatchVisualPlay(side: side, playerIndex: 3, ball: base, from: base, isShot: false)
+            return MatchVisualPlay(side: side, playerIndex: 3, receiverIndex: 4, ball: base, from: base, isShot: false, localProgress: 0, outcome: nil)
         }
 
-        if let goal = currentGoalMoment {
-            let goalProgress = normalizedGoalProgress(for: goal)
-            let shooter = point(for: goal.side, index: 5)
-            let goalMouth = goal.side == .home ? CGPoint(x: 0.982, y: 0.50) : CGPoint(x: 0.018, y: 0.50)
-            let start = goalProgress < 0 ? point(for: goal.side, index: 4) : shooter
-            let clamped = min(1, max(0, goalProgress))
-            let ball = interpolate(from: start, to: goalMouth, progress: clamped)
-            return MatchVisualPlay(
-                side: goal.side,
-                playerIndex: clamped < 0.28 ? 4 : 5,
-                ball: ball,
-                from: shooter,
-                isShot: clamped > 0.45
-            )
+        if let chance = currentChanceMoment {
+            return chancePlay(chance)
         }
 
-        let segmentCount = 18
+        let segmentCount = 34
         let raw = progress * Double(segmentCount)
         let segment = Int(raw) % segmentCount
         let local = CGFloat(raw - floor(raw))
-        let side: BracketSlotSide = segment % 2 == 0 ? .home : .away
-        let route = side == .home ? [1, 3, 4, 5, 2, 4] : [2, 4, 3, 5, 1, 3]
+        let side: BracketSlotSide = segment % 4 < 2 ? .home : .away
+        let routes = side == .home
+            ? [[1, 3, 5, 6], [2, 4, 6, 5], [3, 4, 5, 3]]
+            : [[1, 3, 5, 6], [2, 4, 6, 5], [3, 4, 5, 3]]
+        let route = routes[segment % routes.count]
         let fromIndex = route[segment % route.count]
         let toIndex = route[(segment + 1) % route.count]
         let from = point(for: side, index: fromIndex)
@@ -954,33 +976,122 @@ private struct SoccerPitchView: View {
         return MatchVisualPlay(
             side: side,
             playerIndex: local < 0.55 ? fromIndex : toIndex,
+            receiverIndex: toIndex,
             ball: interpolate(from: from, to: to, progress: eased),
             from: from,
-            isShot: false
+            isShot: false,
+            localProgress: local,
+            outcome: nil
         )
     }
 
-    private var currentGoalMoment: MatchGoalEvent? {
-        result.goalEvents.first { goal in
-            let goalProgress = Double(goal.minute) / 90
-            return progress >= goalProgress - 0.055 && progress <= goalProgress + 0.035
+    private var currentChanceMoment: MatchChanceEvent? {
+        result.chanceEvents.first { chance in
+            let chanceProgress = Double(chance.minute) / 90
+            return progress >= chanceProgress - 0.075 && progress <= chanceProgress + 0.035
         }
     }
 
-    private func normalizedGoalProgress(for goal: MatchGoalEvent) -> CGFloat {
-        let goalProgress = Double(goal.minute) / 90
-        return CGFloat((progress - (goalProgress - 0.055)) / 0.055)
+    private func normalizedChanceProgress(for chance: MatchChanceEvent) -> CGFloat {
+        let chanceProgress = Double(chance.minute) / 90
+        return min(1, max(0, CGFloat((progress - (chanceProgress - 0.075)) / 0.095)))
+    }
+
+    private func chancePlay(_ chance: MatchChanceEvent) -> MatchVisualPlay {
+        let local = normalizedChanceProgress(for: chance)
+        let carrier = local < 0.28 ? 3 : (local < 0.52 ? 5 : 6)
+        let receiver = local < 0.28 ? 5 : 6
+        let p0 = point(for: chance.side, index: 3)
+        let p1 = point(for: chance.side, index: 5)
+        let p2 = point(for: chance.side, index: 6)
+        let shotStart = advanceTowardGoal(from: p2, side: chance.side, amount: 0.08)
+        let target = shotTarget(for: chance)
+        let ball: CGPoint
+        let from: CGPoint
+        let isShot = local > 0.58
+
+        if local < 0.28 {
+            let t = local / 0.28
+            ball = interpolate(from: p0, to: p1, progress: smooth(t))
+            from = p0
+        } else if local < 0.52 {
+            let t = (local - 0.28) / 0.24
+            ball = interpolate(from: p1, to: shotStart, progress: smooth(t))
+            from = p1
+        } else if local < 0.72 {
+            let t = (local - 0.52) / 0.20
+            ball = interpolate(from: shotStart, to: target, progress: smooth(t))
+            from = shotStart
+        } else if chance.outcome == .save {
+            let t = (local - 0.72) / 0.28
+            ball = interpolate(from: target, to: saveDeflectionPoint(for: chance), progress: smooth(t))
+            from = shotStart
+        } else {
+            let t = (local - 0.72) / 0.28
+            ball = interpolate(from: target, to: target, progress: smooth(t))
+            from = shotStart
+        }
+
+        return MatchVisualPlay(
+            side: chance.side,
+            playerIndex: carrier,
+            receiverIndex: receiver,
+            ball: ball,
+            from: from,
+            isShot: isShot,
+            localProgress: local,
+            outcome: chance.outcome
+        )
     }
 
     private func playerPosition(index: Int, home: Bool, play: MatchVisualPlay, size: CGSize) -> CGPoint {
         let base = home ? homeBases[index] : awayBases[index]
-        let sideMatches = (home && play.side == .home) || (!home && play.side == .away)
-        let pressure = sideMatches ? interpolate(from: base, to: play.ball, progress: index == play.playerIndex ? 0.22 : 0.06) : base
-        let motionX = reduceMotion ? 0 : CGFloat(sin(progress * .pi * Double(index + 2))) * (sideMatches ? 7 : 4)
-        let motionY = reduceMotion ? 0 : CGFloat(cos(progress * .pi * Double(index + 3))) * (sideMatches ? 6 : 3)
+        let isHomeAttack = play.side == .home
+        let sideMatches = (home && isHomeAttack) || (!home && !isHomeAttack)
+        let isGoalkeeper = index == 0
+        let chaseStrength: CGFloat
+        if sideMatches {
+            chaseStrength = index == play.playerIndex ? 0.34 : (index == play.receiverIndex ? 0.24 : 0.10)
+        } else {
+            chaseStrength = isGoalkeeper && play.isShot ? 0.52 : 0.16
+        }
+        var pressure = interpolate(from: base, to: play.ball, progress: chaseStrength)
+        if sideMatches {
+            pressure.x += play.side == .home ? 0.035 : -0.035
+        } else {
+            pressure.x += play.side == .home ? 0.018 : -0.018
+        }
+        if isGoalkeeper && !sideMatches && play.isShot {
+            pressure = goalkeeperDivePosition(home: home, play: play)
+        }
+        let tempo = progress * .pi * 36
+        let motionX = reduceMotion ? 0 : CGFloat(sin(tempo + Double(index) * 0.72)) * (sideMatches ? 10 : 6)
+        let motionY = reduceMotion ? 0 : CGFloat(cos(tempo * 0.82 + Double(index) * 1.1)) * (sideMatches ? 8 : 5)
         return CGPoint(
             x: pressure.x * size.width + motionX,
             y: pressure.y * size.height + motionY
+        )
+    }
+
+    private func playerLean(index: Int, home: Bool, play: MatchVisualPlay) -> Double {
+        guard !reduceMotion else { return 0 }
+        let sideMatches = (home && play.side == .home) || (!home && play.side == .away)
+        let direction = home ? 1.0 : -1.0
+        if index == 0 && !sideMatches && play.isShot {
+            return direction * (play.outcome == .save ? -24 : -12)
+        }
+        return direction * (sideMatches ? 7 : -4) * sin(progress * 22 + Double(index))
+    }
+
+    private func goalkeeperDivePosition(home: Bool, play: MatchVisualPlay) -> CGPoint {
+        let base = home ? homeBases[0] : awayBases[0]
+        let goalLineX: CGFloat = home ? 0.08 : 0.92
+        let targetY = min(0.68, max(0.32, play.ball.y))
+        let dive = play.outcome == .save ? min(1, max(0, (play.localProgress - 0.58) / 0.24)) : min(0.55, max(0, (play.localProgress - 0.62) / 0.28))
+        return interpolate(
+            from: base,
+            to: CGPoint(x: goalLineX, y: targetY),
+            progress: smooth(dive)
         )
     }
 
@@ -996,6 +1107,36 @@ private struct SoccerPitchView: View {
             x: from.x + (to.x - from.x) * progress,
             y: from.y + (to.y - from.y) * progress
         )
+    }
+
+    private func advanceTowardGoal(from point: CGPoint, side: BracketSlotSide, amount: CGFloat) -> CGPoint {
+        CGPoint(x: point.x + (side == .home ? amount : -amount), y: point.y)
+    }
+
+    private func shotTarget(for chance: MatchChanceEvent) -> CGPoint {
+        let direction: CGFloat = chance.side == .home ? 1 : -1
+        let goalX: CGFloat = chance.side == .home ? 1.012 : -0.012
+        let keeperX: CGFloat = chance.side == .home ? 0.94 : 0.06
+        let lane = CGFloat((chance.minute % 5) - 2) * 0.045
+        switch chance.outcome {
+        case .goal:
+            return CGPoint(x: goalX, y: 0.50 + lane)
+        case .save:
+            return CGPoint(x: keeperX, y: 0.50 + lane)
+        case .wide:
+            return CGPoint(x: goalX + direction * 0.01, y: chance.minute % 2 == 0 ? 0.29 : 0.71)
+        }
+    }
+
+    private func saveDeflectionPoint(for chance: MatchChanceEvent) -> CGPoint {
+        let direction: CGFloat = chance.side == .home ? -1 : 1
+        let y: CGFloat = chance.minute % 2 == 0 ? 0.22 : 0.78
+        return CGPoint(x: shotTarget(for: chance).x + direction * 0.13, y: y)
+    }
+
+    private func smooth(_ value: CGFloat) -> CGFloat {
+        let t = min(1, max(0, value))
+        return t * t * (3 - 2 * t)
     }
 
     private func jerseyStyle(for team: Team?, fallback: (String, String), opponent: Team?) -> JerseyStyle {
@@ -1020,15 +1161,23 @@ private struct SoccerPitchView: View {
 private struct PlayerDot: View {
     let style: JerseyStyle
     let label: String
+    let isActive: Bool
+    let isGoalkeeper: Bool
 
     var body: some View {
         ZStack {
+            if isActive {
+                Circle()
+                    .stroke(Color.white.opacity(0.42), lineWidth: 5)
+                    .frame(width: isGoalkeeper ? 42 : 48, height: isGoalkeeper ? 42 : 48)
+                    .blur(radius: 0.4)
+            }
             Circle()
                 .fill(style.primary)
             Rectangle()
                 .fill(style.secondary)
-                .frame(width: 12)
-                .rotationEffect(.degrees(-18))
+                .frame(width: isGoalkeeper ? 18 : 12)
+                .rotationEffect(.degrees(isGoalkeeper ? 0 : -18))
                 .offset(x: 1)
                 .clipShape(Circle())
             Circle()
@@ -1038,17 +1187,20 @@ private struct PlayerDot: View {
                 .foregroundColor(style.text)
                 .shadow(color: style.textShadow, radius: 1, x: 0, y: 1)
         }
-            .frame(width: 34, height: 34)
-            .shadow(color: Color.black.opacity(0.22), radius: 5, x: 0, y: 3)
+        .frame(width: isGoalkeeper ? 38 : 34, height: isGoalkeeper ? 38 : 34)
+        .shadow(color: Color.black.opacity(0.22), radius: 5, x: 0, y: 3)
     }
 }
 
 private struct MatchVisualPlay {
     let side: BracketSlotSide
     let playerIndex: Int
+    let receiverIndex: Int
     let ball: CGPoint
     let from: CGPoint
     let isShot: Bool
+    let localProgress: CGFloat
+    let outcome: MatchChanceOutcome?
 }
 
 private struct BallTrail: Shape {
@@ -1067,14 +1219,45 @@ private struct BallTrail: Shape {
     }
 }
 
+private struct FootballView: View {
+    let isShot: Bool
+    let spin: Double
+
+    var body: some View {
+        Circle()
+            .fill(Color.white)
+            .frame(width: isShot ? 22 : 18, height: isShot ? 22 : 18)
+            .overlay(
+                Image(systemName: "soccerball")
+                    .font(.system(size: isShot ? 16 : 13, weight: .black))
+                    .foregroundColor(Color.black.opacity(0.72))
+                    .rotationEffect(.degrees(spin * 1440))
+            )
+            .overlay(Circle().stroke(Color.black.opacity(0.35), lineWidth: 2))
+            .shadow(color: Color.black.opacity(0.25), radius: 5, x: 0, y: 3)
+    }
+}
+
 private struct ShotBurst: View {
     let side: BracketSlotSide
+    let outcome: MatchChanceOutcome?
 
     var body: some View {
         Image(systemName: side == .home ? "arrow.right.circle.fill" : "arrow.left.circle.fill")
             .font(.system(size: 34, weight: .black))
-            .foregroundColor(Color(hex: "#FFC93C"))
+            .foregroundColor(outcome == .save ? Color.white : Color(hex: "#FFC93C"))
             .shadow(color: Color.black.opacity(0.3), radius: 4, x: 0, y: 3)
+    }
+}
+
+private struct SaveFlash: View {
+    var body: some View {
+        Image(systemName: "hand.raised.fill")
+            .font(.system(size: 34, weight: .black))
+            .foregroundColor(.white)
+            .padding(10)
+            .background(Circle().fill(Color(hex: "#263645").opacity(0.76)))
+            .shadow(color: Color.black.opacity(0.32), radius: 6, x: 0, y: 4)
     }
 }
 
@@ -1165,13 +1348,15 @@ private enum MatchSimulationFactory {
             sides.shuffle()
             events = zip(minutes, sides).map { MatchGoalEvent(minute: $0.0, side: $0.1) }.sorted { $0.minute < $1.minute }
         }
+        let chances = makeChances(goalEvents: events)
 
         return MatchSimulationResult(
             homeGoals: homeGoals,
             awayGoals: awayGoals,
             winner: winner,
             decidedByPenalties: decidedByPenalties,
-            goalEvents: events
+            goalEvents: events,
+            chanceEvents: chances
         )
     }
 
@@ -1192,6 +1377,25 @@ private enum MatchSimulationFactory {
             minutes.insert(Int.random(in: 8...86))
         }
         return Array(minutes).sorted()
+    }
+
+    private static func makeChances(goalEvents: [MatchGoalEvent]) -> [MatchChanceEvent] {
+        var chances = goalEvents.map {
+            MatchChanceEvent(minute: $0.minute, side: $0.side, outcome: .goal)
+        }
+        let extraCount = Int.random(in: 4...6)
+        var used = Set(goalEvents.map(\.minute))
+        var attempts = 0
+        while chances.count < goalEvents.count + extraCount && attempts < 160 {
+            attempts += 1
+            let minute = Int.random(in: 6...88)
+            guard !used.contains(where: { abs($0 - minute) < 5 }) else { continue }
+            used.insert(minute)
+            let side: BracketSlotSide = Bool.random() ? .home : .away
+            let outcome: MatchChanceOutcome = Int.random(in: 0..<100) < 68 ? .save : .wide
+            chances.append(MatchChanceEvent(minute: minute, side: side, outcome: outcome))
+        }
+        return chances.sorted { $0.minute < $1.minute }
     }
 }
 
@@ -1254,12 +1458,26 @@ private struct MatchSimulationResult: Equatable {
     let winner: Team
     let decidedByPenalties: Bool
     let goalEvents: [MatchGoalEvent]
+    let chanceEvents: [MatchChanceEvent]
 }
 
 private struct MatchGoalEvent: Equatable, Identifiable {
     let id = UUID()
     let minute: Int
     let side: BracketSlotSide
+}
+
+private struct MatchChanceEvent: Equatable, Identifiable {
+    let id = UUID()
+    let minute: Int
+    let side: BracketSlotSide
+    let outcome: MatchChanceOutcome
+}
+
+private enum MatchChanceOutcome: Equatable {
+    case goal
+    case save
+    case wide
 }
 
 private struct TournamentBracket: Equatable {
