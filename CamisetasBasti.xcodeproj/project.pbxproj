@@ -35,6 +35,7 @@
 		E95B2582D97CFBDE2999B6D6 /* CamisetasBastiUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0334935DC31B8A036FF593E2 /* CamisetasBastiUITests.swift */; };
 		EB461ACBFC0A7FB35B45AF1B /* ShirtView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A080A4C516FB2DF723896186 /* ShirtView.swift */; };
 		EBDAFF0D06631A4DBBDF1FDF /* ProgressStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 592A0F111F4846A6DE8F1576 /* ProgressStoreTests.swift */; };
+		EDF6192CDC3AE3FDF6A56254 /* WorldCupFixtureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C25979F021C1D33E9BE48A12 /* WorldCupFixtureView.swift */; };
 		FEE734781B2A067C692DF0C0 /* ProgressStars.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83F441B6FE57284BE1E787C5 /* ProgressStars.swift */; };
 /* End PBXBuildFile section */
 
@@ -59,7 +60,7 @@
 		0334935DC31B8A036FF593E2 /* CamisetasBastiUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CamisetasBastiUITests.swift; sourceTree = "<group>"; };
 		0FAA31BF179D543F0D87BED4 /* BigKidButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BigKidButton.swift; sourceTree = "<group>"; };
 		15560836092BE03FFC841988 /* ProgressStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressStore.swift; sourceTree = "<group>"; };
-		1C68FA8D81A9FFCC9098D098 /* Camisetas Basti.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Camisetas Basti.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		1C68FA8D81A9FFCC9098D098 /* CamisetasBasti.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = CamisetasBasti.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		29B6F57AE22D644396CCCA85 /* AlbumView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlbumView.swift; sourceTree = "<group>"; };
 		47FD99742A8677A1E7284FEB /* AlbumCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlbumCell.swift; sourceTree = "<group>"; };
 		4C931DEA97DE4115D3EE444A /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
@@ -83,6 +84,7 @@
 		A080A4C516FB2DF723896186 /* ShirtView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShirtView.swift; sourceTree = "<group>"; };
 		B02B5BBAD77FA3E55B602D64 /* CamisetasBastiApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CamisetasBastiApp.swift; sourceTree = "<group>"; };
 		BE06B1874A1E5CB918D23E86 /* TeamDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TeamDetailView.swift; sourceTree = "<group>"; };
+		C25979F021C1D33E9BE48A12 /* WorldCupFixtureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorldCupFixtureView.swift; sourceTree = "<group>"; };
 		D0309408F9EEC136685FD1C0 /* CamisetasBastiTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = CamisetasBastiTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		D5925DBF3E79794D97A67C82 /* TournamentSimulatorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TournamentSimulatorView.swift; sourceTree = "<group>"; };
 		D86F38F370EA943FDD1DCDCB /* CrestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrestView.swift; sourceTree = "<group>"; };
@@ -145,6 +147,7 @@
 				BE06B1874A1E5CB918D23E86 /* TeamDetailView.swift */,
 				936953927B3BA81F94DE9CD4 /* TeamsView.swift */,
 				D5925DBF3E79794D97A67C82 /* TournamentSimulatorView.swift */,
+				C25979F021C1D33E9BE48A12 /* WorldCupFixtureView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -152,7 +155,7 @@
 		954186FC296F90CE05F326A7 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				1C68FA8D81A9FFCC9098D098 /* Camisetas Basti.app */,
+				1C68FA8D81A9FFCC9098D098 /* CamisetasBasti.app */,
 				D0309408F9EEC136685FD1C0 /* CamisetasBastiTests.xctest */,
 				97C80FB2EF692C8EB4E88ACA /* CamisetasBastiUITests.xctest */,
 			);
@@ -229,7 +232,7 @@
 			packageProductDependencies = (
 			);
 			productName = CamisetasBasti;
-			productReference = 1C68FA8D81A9FFCC9098D098 /* Camisetas Basti.app */;
+			productReference = 1C68FA8D81A9FFCC9098D098 /* CamisetasBasti.app */;
 			productType = "com.apple.product-type.application";
 		};
 		86D842F189CE0E27186A4B8C /* CamisetasBastiTests */ = {
@@ -278,6 +281,7 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					86D082BEF962ECFD4D890FC4 = {
+						DevelopmentTeam = Q2TG5FA7M7;
 						ProvisioningStyle = Automatic;
 					};
 					CE807A9223C9F062E1846B20 = {
@@ -356,6 +360,7 @@
 				B533BBD1DBA922B1D5CE2CC5 /* TeamDetailView.swift in Sources */,
 				9CE820A86550511FAB2A1072 /* TeamsView.swift in Sources */,
 				C7A5F3A6644043B96F639151 /* TournamentSimulatorView.swift in Sources */,
+				EDF6192CDC3AE3FDF6A56254 /* WorldCupFixtureView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

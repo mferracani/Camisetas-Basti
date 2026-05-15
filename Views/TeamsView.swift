@@ -5,6 +5,7 @@ struct TeamsView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var selectedTeam: Team?
     @State private var selectedKit: String?
+    @State private var showWorldCupFixture = false
 
     var body: some View {
         GeometryReader { geo in
@@ -27,11 +28,17 @@ struct TeamsView: View {
                     .padding(.top, 24)
 
                     ScrollView {
-                        LazyVGrid(columns: teamGridColumns(for: geo.size.width), spacing: 24) {
-                            ForEach(CAMI_DATA.teams(for: country.id)) { team in
-                                TeamCard(country: country, team: team, shirtSize: teamShirtSize(for: geo.size.width)) {
-                                    SoundManager.shared.playTap()
-                                    selectedTeam = team
+                        VStack(spacing: 24) {
+                            if isWorldCup {
+                                worldCupFixtureButton
+                            }
+
+                            LazyVGrid(columns: teamGridColumns(for: geo.size.width), spacing: 24) {
+                                ForEach(CAMI_DATA.teams(for: country.id)) { team in
+                                    TeamCard(country: country, team: team, shirtSize: teamShirtSize(for: geo.size.width)) {
+                                        SoundManager.shared.playTap()
+                                        selectedTeam = team
+                                    }
                                 }
                             }
                         }
@@ -45,6 +52,43 @@ struct TeamsView: View {
         .fullScreenCover(item: $selectedTeam) { team in
             TeamDetailView(country: country, team: team)
         }
+        .fullScreenCover(isPresented: $showWorldCupFixture) {
+            WorldCupFixtureView()
+        }
+    }
+
+    private var isWorldCup: Bool {
+        country.id == "wc26"
+    }
+
+    private var worldCupFixtureButton: some View {
+        Button {
+            SoundManager.shared.playTap()
+            showWorldCupFixture = true
+        } label: {
+            HStack(spacing: 16) {
+                Text("🏆")
+                    .font(.system(size: 38))
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("FIXTURE MUNDIAL")
+                        .font(.custom("Nunito-Black", size: 24))
+                        .foregroundColor(Color(hex: "#3D2A1F"))
+                    Text("ZONAS, RESULTADOS Y LLAVES")
+                        .font(.custom("Nunito-Bold", size: 13))
+                        .foregroundColor(Color(hex: "#A88C6A"))
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 22, weight: .black))
+                    .foregroundColor(Color(hex: "#FF7B3D"))
+            }
+            .padding(20)
+            .frame(maxWidth: 760)
+            .background(Color.white)
+            .cornerRadius(20)
+            .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 6)
+        }
+        .buttonStyle(.plain)
     }
 }
 
