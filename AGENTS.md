@@ -11,12 +11,33 @@ Este archivo es la instruccion canonica para agentes que trabajen en este repo. 
 1. `AGENTS.md`
 2. `.project/state.md`
 3. `.project/feature-list.json`
-4. `.project/validation.md`
-5. `.project/handoff.md`
-6. `.project/decisions.md`
-7. Documentos fuente segun la tarea: `PRD.md`, `.project/ux-spec.md`, `.project/backend-spec.md`, `.project/qa-checklist.md`, `TESTFLIGHT.md`, `ASSETS.md`, `README.md`
+4. `.project/context-budget.md`
+5. `.project/validation.md` (segun tier)
+6. `.project/handoff.md` (segun tier)
+7. `.project/decisions.md` (segun tier)
+8. Documentos fuente segun la tarea: `PRD.md`, `.project/ux-spec.md`, `.project/backend-spec.md`, `.project/qa-checklist.md`, `TESTFLIGHT.md`, `ASSETS.md`, `README.md`
+
+Cada lectura cuesta tokens. Antes de abrir nada mas alla del item 4, elegir el `context_level` segun `.project/context-budget.md` y leer solo lo permitido por ese tier.
 
 Si hay contradiccion entre documentos, gana el codigo actual y despues `.project/state.md`. Si sigue habiendo conflicto, marcarlo como blocker antes de inventar.
+
+## Runners y presupuesto de contexto
+
+El repo se trabaja desde varios runners. Una sesion siempre declara cual:
+
+- `codex` - Codex CLI
+- `opencode` - OpenCode CLI
+- `openclaw` - runner autonomo local
+- `external` - humano en Xcode/CLI sin LLM
+
+Tiers de contexto: `quick`, `standard`, `deep`. Definicion completa en `.project/context-budget.md`.
+
+Antes de editar, registrar `runner` y `context_level` en:
+
+1. `.project/state.md` -> seccion `## Sesion activa`.
+2. `.project/feature-list.json` -> campo `active_session`.
+
+Si la sesion necesita subir de tier (por ejemplo, una tarea declarada `quick` requiere leer codigo Swift), subir antes de leer y anotar el motivo (`escalated_from`).
 
 ## Stack real
 
@@ -84,10 +105,10 @@ El cierre debe decir que se corrio, que paso y que quedo pendiente.
 
 Antes de terminar una tarea con cambios:
 
-1. Actualizar `.project/state.md` si cambio el estado real.
-2. Actualizar `.project/feature-list.json` si cambia una feature o task conocida.
+1. Actualizar `.project/state.md` si cambio el estado real. Limpiar o resumir `## Sesion activa` cuando la tanda termina.
+2. Actualizar `.project/feature-list.json` si cambia una feature o task conocida. Vaciar o resumir `active_session` al cerrar.
 3. Agregar decision durable en `.project/decisions.md` si se tomo una decision de producto/arquitectura.
-4. Registrar contexto breve en `.project/handoff.md` si queda trabajo pendiente o hay una pista importante para el siguiente agente.
+4. Registrar contexto breve en `.project/handoff.md` si queda trabajo pendiente o hay una pista importante para el siguiente agente. Anotar `runner`, `context_level` usado y si hubo escalado de tier.
 5. Dejar `git status` limpio si el usuario pidio commit/push; si no, reportar archivos modificados.
 
 ## Contrato para nuevas tareas
@@ -101,7 +122,9 @@ Cuando se agregue una tarea al harness o backlog, escribirla con estos campos:
 - `allowed_write_areas`: rutas permitidas.
 - `out_of_scope`: lo que no se toca.
 - `validation_loop`: comandos/checks a correr.
-- `execution_mode`: `OpenClaw`, `external-runner` o `either`.
+- `execution_mode`: `autonomous`, `external-runner` o `either`.
+- `runner_compat`: lista de runners que pueden tomarla (`codex`, `opencode`, `openclaw`, `external`, `any`).
+- `context_budget`: `quick`, `standard` o `deep` sugerido para esa tarea.
 - `recommended_owner`: PM, UX, SwiftUI, Data, Security o QA.
 - `dependencies`: datos, assets, permisos o decisiones necesarias.
 - `escalation_rule`: cuando frenar y pedir confirmacion.

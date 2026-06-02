@@ -1,7 +1,7 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "project": "Camisetas Basti",
-  "last_updated": "2026-05-15",
+  "last_updated": "2026-06-02",
   "task_contract": {
     "required_fields": [
       "objective",
@@ -12,14 +12,28 @@
       "out_of_scope",
       "validation_loop",
       "execution_mode",
+      "runner_compat",
+      "context_budget",
       "recommended_owner",
       "dependencies",
       "escalation_rule"
     ],
     "execution_modes": [
-      "OpenClaw",
+      "autonomous",
       "external-runner",
       "either"
+    ],
+    "runners": [
+      "codex",
+      "opencode",
+      "openclaw",
+      "external",
+      "any"
+    ],
+    "context_levels": [
+      "quick",
+      "standard",
+      "deep"
     ],
     "recommended_owners": [
       "Product Manager",
@@ -30,6 +44,16 @@
       "QA Engineer"
     ]
   },
+  "active_session": {
+    "started": "2026-06-02",
+    "runner": "opencode",
+    "context_level": "quick",
+    "task_slug": "task/project-harness-runner-toggle",
+    "task_id": "project-harness",
+    "scope": "Soporte multi-runner (Codex/OpenCode) y context budget en harness sin tocar codigo Swift.",
+    "escalated_from": null,
+    "notes": "Lectura excedio quick para entender un WIP previo no commiteado (state.md, handoff.md, decisions.md, validation.md). Una vez adoptado el WIP como baseline, el resto de la tanda se mantuvo en quick."
+  },
   "features": [
     {
       "id": "paint-shirts",
@@ -37,6 +61,8 @@
       "status": "implemented-active",
       "recommended_owner": "SwiftUI Engineer",
       "execution_mode": "either",
+      "runner_compat": ["any"],
+      "context_budget": "standard",
       "objective": "Permitir elegir una camiseta grisada, pintarla con el dedo y guardar progreso local.",
       "source_of_truth": [
         "PRD.md",
@@ -84,6 +110,8 @@
       "status": "implemented-active",
       "recommended_owner": "Local Data Designer",
       "execution_mode": "either",
+      "runner_compat": ["any"],
+      "context_budget": "standard",
       "objective": "Mantener datos locales completos para equipos, ligas, Mundial 2026, camisetas y escudos visibles.",
       "source_of_truth": [
         "Data/CAMI_DATA.swift",
@@ -128,6 +156,8 @@
       "status": "implemented-active",
       "recommended_owner": "UX Designer",
       "execution_mode": "either",
+      "runner_compat": ["any"],
+      "context_budget": "standard",
       "objective": "Permitir armar llaves, avanzar equipos manualmente o simular partidos con animacion y ganador automatico.",
       "source_of_truth": [
         "Views/TournamentSimulatorView.swift",
@@ -175,6 +205,8 @@
       "status": "implemented-active",
       "recommended_owner": "Product Manager",
       "execution_mode": "either",
+      "runner_compat": ["any"],
+      "context_budget": "standard",
       "objective": "Mostrar grupos, partidos, carga de resultados, tablas y eliminatorias del Mundial 2026.",
       "source_of_truth": [
         "Views/WorldCupFixtureView.swift",
@@ -221,6 +253,8 @@
       "status": "blocked-external-signing",
       "recommended_owner": "QA Engineer",
       "execution_mode": "external-runner",
+      "runner_compat": ["external"],
+      "context_budget": "deep",
       "objective": "Dejar la app lista para archive y subida a TestFlight desde Xcode.",
       "source_of_truth": [
         "TESTFLIGHT.md",
@@ -268,11 +302,14 @@
       "status": "implemented-active",
       "recommended_owner": "Product Manager",
       "execution_mode": "either",
-      "objective": "Mantener contexto, validacion y handoffs claros para futuros agentes.",
+      "runner_compat": ["any"],
+      "context_budget": "quick",
+      "objective": "Mantener contexto, validacion y handoffs claros para futuros agentes y permitir alternar runners (Codex, OpenCode, OpenClaw) sin quemar tokens.",
       "source_of_truth": [
         "AGENTS.md",
         ".project/state.md",
         ".project/feature-list.json",
+        ".project/context-budget.md",
         ".project/validation.md",
         ".project/handoff.md",
         ".project/decisions.md"
@@ -280,14 +317,17 @@
       "deliverables": [
         "Instrucciones de arranque",
         "Estado actual",
-        "Lista estructurada de features",
+        "Lista estructurada de features con runner_compat y context_budget",
+        "Presupuesto de contexto con tiers quick/standard/deep",
         "Contrato de validacion",
         "Handoff y decisiones"
       ],
       "definition_of_done": [
         "JSON valido",
         "Referencias reales o marcadas como TODO",
-        "Markdown legible"
+        "Markdown legible",
+        "Cada feature declara runner_compat y context_budget",
+        "active_session refleja runner y context_level vigentes"
       ],
       "allowed_write_areas": [
         "AGENTS.md",
@@ -305,9 +345,10 @@
         "Repo actual"
       ],
       "risks": [
-        "Documentacion quede desactualizada si no se actualiza al cerrar tareas"
+        "Documentacion quede desactualizada si no se actualiza al cerrar tareas",
+        "Agentes ignoren context_budget y lean documentos fuera del tier"
       ],
-      "escalation_rule": "Escalar si aparece conflicto entre AGENTS.md y otro archivo de autoridad."
+      "escalation_rule": "Escalar si aparece conflicto entre AGENTS.md y otro archivo de autoridad, o si un runner nuevo no encaja en el contrato."
     }
   ]
 }

@@ -1,6 +1,16 @@
 # Project State
 
-Ultima actualizacion: 2026-05-15
+Ultima actualizacion: 2026-06-02
+
+## Sesion activa
+
+- `runner`: opencode
+- `context_level`: quick
+- `task_slug`: task/project-harness-runner-toggle
+- `task_id`: project-harness
+- `started`: 2026-06-02
+- `scope`: Soporte multi-runner (Codex/OpenCode) y context budget en harness sin tocar codigo Swift.
+- `escalated_from`: ninguno. La lectura excedio quick para entender un WIP previo sin commit (state.md, handoff.md, decisions.md, validation.md); el costo fue de sincronizacion defensiva, no de la tarea.
 
 ## Snapshot
 
@@ -30,7 +40,7 @@ La app compila y los tests pasan en simulador. El archive/subida TestFlight sigu
 
 - Build simulador: OK el 2026-05-15.
 - Tests: OK el 2026-05-15, 22 tests ejecutados, 0 fallas.
-- JSON harness: OK el 2026-05-15.
+- JSON harness: OK el 2026-06-02 (revalidado tras incorporar `context_budget` y `runner_compat`).
 - Archive/TestFlight: pendiente por signing/certificados.
 
 ## Active focus

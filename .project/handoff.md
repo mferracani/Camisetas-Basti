@@ -1,6 +1,6 @@
 # Handoff
 
-Ultima actualizacion: 2026-05-15
+Ultima actualizacion: 2026-06-02
 
 ## Para el proximo agente
 
@@ -9,9 +9,12 @@ Arrancar leyendo:
 1. `AGENTS.md`
 2. `.project/state.md`
 3. `.project/feature-list.json`
-4. `.project/validation.md`
+4. `.project/context-budget.md`
+5. Resto segun el tier elegido
 
 El repo esta en `main` y la app viene de varias iteraciones de contenido, torneo, fixture mundial, pintura y TestFlight. No asumir que `README.md` y `PRD.md` describen el estado exacto actual: son fuente historica/producto, pero el codigo y `.project/state.md` mandan para ejecucion.
+
+Antes de editar, registrar `runner` y `context_level` en `state.md` y `feature-list.json.active_session`. Ver `.project/context-budget.md` para reglas y tiers.
 
 ## Estado actual
 
@@ -42,6 +45,17 @@ Agregar una entrada breve debajo de esta linea con:
 - Pendiente o blocker
 
 ## Log
+
+### 2026-06-02 - Harness multi-runner + context budget
+
+- Runner: opencode. Context level: quick.
+- Rama: `task/project-harness-runner-toggle`.
+- Se adopto como baseline un WIP del harness que estaba sin commit en `main` (autoria previa, posiblemente Codex u OpenClaw). Commit: `Adopt project harness WIP as baseline`.
+- Se agrego `.project/context-budget.md` con tiers `quick`, `standard`, `deep` y lista de runners (`codex`, `opencode`, `openclaw`, `external`, `any`).
+- `AGENTS.md` ahora pide registrar `runner` y `context_level` antes de editar, e incorpora el budget al orden de lectura.
+- `feature-list.json` subio a `schema_version: 2`: agrega `runners`, `context_levels`, `runner_compat` y `context_budget` por feature, y un objeto raiz `active_session`. Se renombro `OpenClaw` -> `autonomous` en `execution_modes` (no estaba en uso en ninguna feature).
+- Validacion: `python3 -m json.tool .project/feature-list.json` OK; `git diff --check` OK.
+- Pendiente: commitear estos cambios si el usuario lo pide, y eventualmente pushear `task/project-harness-runner-toggle`.
 
 ### 2026-05-15 - Project Harness
 

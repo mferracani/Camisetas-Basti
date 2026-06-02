@@ -41,3 +41,11 @@ Este archivo guarda decisiones durables. No registrar opiniones pasajeras; solo 
 **Rationale:** El bloqueo conocido esta en permisos/certificados durante codesign. Un agente no debe declarar release listo sin validar archive.
 
 **Revisitar si:** Se automatiza signing o se documenta un pipeline reproducible.
+
+## 2026-06-02 - Harness multi-runner con context budget explicito
+
+**Decision:** El harness contempla explicitamente que la misma tarea puede ser tomada por distintos runners (`codex`, `opencode`, `openclaw`, `external`) y obliga a declarar `runner` y `context_level` (`quick`, `standard`, `deep`) antes de editar. La definicion vive en `.project/context-budget.md` y se referencia desde `AGENTS.md`, `.project/state.md` y `.project/feature-list.json` (campos `runner_compat`, `context_budget`, `active_session`).
+
+**Rationale:** Codex y OpenCode cuestan tokens por lectura. Sin un tier explicito, cada agente leia el repo entero "por las dudas". El budget acota la lectura por defecto, deja escalado explicito y permite alternar runner sin perder estado.
+
+**Revisitar si:** Aparece un runner nuevo que no encaja en la lista, o si los tiers `quick/standard/deep` resultan insuficientes para algun tipo de tarea recurrente.
