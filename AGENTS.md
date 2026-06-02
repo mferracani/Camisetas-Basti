@@ -1,130 +1,128 @@
-# Agent Kit — Camisetas Basti
+# Project Harness - Camisetas Basti
 
-> Framework multi-agente para construir la app **Camisetas Basti**: iOS/macOS nativa (SwiftUI), offline-first, para niños de 4 años.
+Este archivo es la instruccion canonica para agentes que trabajen en este repo. El objetivo es que cualquier agente pueda arrancar rapido, entender el estado real y cerrar con evidencia.
 
-Este proyecto usa un framework de **3 Gates y 6 Agentes**. Cada agente tiene un rol definido, no se saltan gates, y todos leen/escriben `.project/state.md` como fuente de verdad.
+## Proyecto
 
----
+**Camisetas Basti** es una app iPad-first en SwiftUI para que un nino pinte, descubra y coleccione camisetas de futbol sin internet. El repo actual contiene la app iOS, datos locales, tests, torneo simulado, fixture mundial y preparacion para TestFlight.
 
-## 3 Gates
+## Orden de lectura al arrancar
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│ GATE 1 — PRD aprobado                                       │
-│   Owner: Product Manager                                    │
-│   Output: PRD.md (YA EXISTE Y ESTÁ APROBADO)               │
-│   Status: ✅ APROBADO                                       │
-├─────────────────────────────────────────────────────────────┤
-│ GATE 2 — UX Spec                                            │
-│   Owner: UX Designer                                        │
-│   Output: .project/ux-spec.md                               │
-│   Status: ⏳ PENDIENTE                                      │
-├─────────────────────────────────────────────────────────────┤
-│ GATE 3 — Build completo                                     │
-│   Secuencia: Local Data → SwiftUI → Security → QA          │
-│   Outputs: código + .project/backend-spec.md, tests, etc.   │
-│   Status: ⏳ PENDIENTE                                      │
-└─────────────────────────────────────────────────────────────┘
-```
+1. `AGENTS.md`
+2. `.project/state.md`
+3. `.project/feature-list.json`
+4. `.project/validation.md`
+5. `.project/handoff.md`
+6. `.project/decisions.md`
+7. Documentos fuente segun la tarea: `PRD.md`, `.project/ux-spec.md`, `.project/backend-spec.md`, `.project/qa-checklist.md`, `TESTFLIGHT.md`, `ASSETS.md`, `README.md`
 
-## 6 Agentes
+Si hay contradiccion entre documentos, gana el codigo actual y despues `.project/state.md`. Si sigue habiendo conflicto, marcarlo como blocker antes de inventar.
 
-| # | Agente | Cuándo entra | Output principal |
-|---|--------|-------------|------------------|
-| 1 | **Product Manager** | Validar decisiones, cambios de alcance | Decisiones en `state.md` |
-| 2 | **UX Designer** | Después de PRD aprobado | `.project/ux-spec.md` |
-| 3 | **Local Data Designer** | Después de UX aprobado | `.project/backend-spec.md` |
-| 4 | **SwiftUI Engineer** | Después de contrato de datos | Vistas Swift + lógica |
-| 5 | **Security Reviewer** | Post backend-spec y pre-merge | `.project/security-review.md` |
-| 6 | **QA Engineer** | Final de cada fase | Tests + `.project/qa-checklist.md` |
+## Stack real
 
-## Stack del proyecto
+- SwiftUI app iOS/iPadOS 16+, iPad landscape como superficie principal.
+- Proyecto Xcode generado por `project.yml` con XcodeGen.
+- Scheme principal: `CamisetasBasti`.
+- Persistencia local con `UserDefaults` via `ProgressStore`.
+- Sin backend, login, analytics, ads ni dependencias remotas de runtime.
+- Tests: `CamisetasBastiTests` y `CamisetasBastiUITests`.
 
-- **Plataforma:** iOS 16+, iPadOS 16+, macOS 13+
-- **Framework:** Swift nativo, SwiftUI (UIKit donde haga falta)
-- **Persistencia:** UserDefaults Codable (local, offline)
-- **Sonidos:** AVAudioPlayer con archivos .m4a embebidos
-- **Assets:** Vectores nativos Swift (Shapes/Path), fuente Nunito local
-- **Sin backend remoto, sin auth, sin login, sin analytics, sin ads.**
+## Comandos base
 
-## Cómo usar los agentes
+Regenerar proyecto si cambia `project.yml`:
 
-### En Claude Code
-Invocá por nombre con `@`:
-```
-@product-manager — revisar alcance de feature X
-@ux-designer — generar ux-spec.md desde PRD.md
-@backend-designer — definir modelo de datos local
-@swiftui-engineer — implementar PaintView
-@security-reviewer — auditar privacidad infantil
-@qa-engineer — generar tests y checklist
+```bash
+xcodegen generate
 ```
 
-Los archivos de agentes viven en `.claude/agents/*.md`.
+Build de simulador:
 
-### En Cursor
-Pedí en el chat:
-```
-"Actuá como el UX Designer del kit y generá el ux-spec.md"
-"Actuá como el SwiftUI Engineer del kit e implementá la PaintView"
+```bash
+xcodebuild -project CamisetasBasti.xcodeproj -scheme CamisetasBasti -configuration Debug -destination 'generic/platform=iOS Simulator' -derivedDataPath build/DerivedData build
 ```
 
-Los rules viven en `.cursor/rules/*.mdc`.
+Tests unitarios/UI configurados en scheme:
 
-### Manual (cualquier otro tool)
-Leé el archivo del agente que necesites en `.claude/agents/` y seguí su system prompt.
-
----
-
-## Reglas globales (válidas para todos)
-
-1. **Leer state antes de actuar.** Siempre. `.project/state.md` es la fuente de verdad.
-2. **No saltar gates.** Si el usuario pide algo de una fase posterior sin cerrar la anterior, avisá y ofrecé cerrar la actual primero.
-3. **Handoffs explícitos.** Al terminar tu turno, decí qué rol debería actuar después.
-4. **Sin drift de rol.** PM no escribe código. SwiftUI Engineer no diseña pantallas.
-5. **State es verdad.** Si hay contradicción entre el state y tu memoria, gana el state.
-6. **Aprobación viene del usuario.** Ningún agente se auto-aprueba.
-
----
-
-## Archivos del proyecto
-
-```
-.
-├── AGENTS.md                          ← este archivo (índice)
-├── PRD.md                             ← especificación completa
-├── README.md                          ← guía de implementación
-├── .project/
-│   └── state.md                       ← estado actual del proyecto
-├── .claude/agents/                    ← agentes para Claude Code
-│   ├── product-manager.md
-│   ├── ux-designer.md
-│   ├── backend-designer.md
-│   ├── swiftui-engineer.md
-│   ├── security-reviewer.md
-│   └── qa-engineer.md
-├── .cursor/rules/                     ← rules para Cursor
-│   ├── 00-framework.mdc
-│   ├── 01-product-manager.mdc
-│   ├── 02-ux-designer.mdc
-│   ├── 03-backend-designer.mdc
-│   ├── 04-frontend-engineer.mdc
-│   ├── 05-security-reviewer.mdc
-│   └── 06-qa-engineer.mdc
-└── DISEÑO CAMISETAS/                  ← prototipo original
-    ├── screens.jsx
-    ├── paint-screen.jsx
-    ├── shirts.jsx
-    ├── data.jsx
-    └── ...
+```bash
+xcodebuild test -project CamisetasBasti.xcodeproj -scheme CamisetasBasti -configuration Debug -destination 'platform=iOS Simulator,name=iPad Pro 13-inch (M5)' -derivedDataPath build/DerivedData
 ```
 
-## Próximo paso recomendado
+Archive/TestFlight: ver `TESTFLIGHT.md`. No declarar listo para TestFlight si no se valido signing/archive.
 
-El **Gate 1 (PRD) está aprobado**. El siguiente paso es el **Gate 2 (UX Spec)**.
+## Reglas de autonomia
 
-**Invocá al UX Designer** para generar `.project/ux-spec.md` con wireframes ASCII adaptados a iPad landscape.
+- Avanzar sin preguntar cuando el pedido sea claro y el cambio sea reversible.
+- No revertir cambios ajenos. Revisar `git status --short --branch` antes de editar.
+- Mantener el alcance chico: no refactors amplios si el pedido es de contenido, UI o harness.
+- No tocar signing, bundle id, versionado de build, assets de produccion o reglas de TestFlight sin validar impacto.
+- No usar internet ni servicios externos como dependencia de app. La experiencia debe funcionar offline.
+- No borrar, renombrar ni mover carpetas grandes sin aprobacion.
+- Para UI de Bastian, priorizar iPad landscape, targets tactiles grandes, feedback visual inmediato y cero friccion lectora.
 
-```
-"Actuá como el UX Designer e implementá el ux-spec.md desde el PRD."
-```
+## Areas de escritura habituales
+
+- Codigo Swift: `Views/`, `Components/`, `Models/`, `Data/`, `Services/`, `Utils/`, `CamisetasBastiApp.swift`
+- Tests: `CamisetasBastiTests/`, `CamisetasBastiUITests/`
+- Assets: `Resources/Assets.xcassets/`, `Resources/Info.plist` cuando corresponda
+- Harness/docs: `.project/`, `AGENTS.md`, `README.md`, `TESTFLIGHT.md`, `ASSETS.md`
+
+Evitar tocar archivos generados de `CamisetasBasti.xcodeproj` manualmente si el cambio corresponde a `project.yml`.
+
+## Validacion antes de cerrar
+
+Elegir la validacion minima segun el cambio:
+
+- Docs/harness: validar Markdown por lectura y JSON con `python3 -m json.tool .project/feature-list.json`.
+- Cambios Swift: correr build de simulador.
+- Cambios en persistencia, pintura, torneo o fixture: correr build + tests.
+- Cambios en `project.yml`: correr `xcodegen generate`, revisar diff del `.xcodeproj`, build.
+- TestFlight/signing: validar en Xcode o con `xcodebuild archive` solo si hay certificados/permisos disponibles.
+
+El cierre debe decir que se corrio, que paso y que quedo pendiente.
+
+## Handoff limpio
+
+Antes de terminar una tarea con cambios:
+
+1. Actualizar `.project/state.md` si cambio el estado real.
+2. Actualizar `.project/feature-list.json` si cambia una feature o task conocida.
+3. Agregar decision durable en `.project/decisions.md` si se tomo una decision de producto/arquitectura.
+4. Registrar contexto breve en `.project/handoff.md` si queda trabajo pendiente o hay una pista importante para el siguiente agente.
+5. Dejar `git status` limpio si el usuario pidio commit/push; si no, reportar archivos modificados.
+
+## Contrato para nuevas tareas
+
+Cuando se agregue una tarea al harness o backlog, escribirla con estos campos:
+
+- `objective`: resultado esperado.
+- `source_of_truth`: archivos, screenshots o instrucciones que mandan.
+- `deliverables`: archivos o comportamientos a entregar.
+- `definition_of_done`: evidencia necesaria para cerrar.
+- `allowed_write_areas`: rutas permitidas.
+- `out_of_scope`: lo que no se toca.
+- `validation_loop`: comandos/checks a correr.
+- `execution_mode`: `OpenClaw`, `external-runner` o `either`.
+- `recommended_owner`: PM, UX, SwiftUI, Data, Security o QA.
+- `dependencies`: datos, assets, permisos o decisiones necesarias.
+- `escalation_rule`: cuando frenar y pedir confirmacion.
+
+## Agent Kit local
+
+El repo conserva un kit de agentes en `.claude/agents/` y `.cursor/rules/`. Usarlo como especializacion, no como burocracia:
+
+- Product Manager: alcance, decisiones y priorizacion.
+- UX Designer: flujos, layout iPad landscape, microinteracciones.
+- Local Data Designer: modelo local, assets, persistencia offline.
+- SwiftUI Engineer: implementacion app.
+- Security Reviewer: privacidad infantil, offline, datos locales.
+- QA Engineer: test plan, regresiones y evidencia.
+
+Los gates originales ya no reflejan el estado inicial del proyecto: PRD, UX y build base existen. El estado actual vive en `.project/state.md`.
+
+## Escalar o pausar si
+
+- Hay que borrar/renombrar archivos mayores.
+- Hay conflicto entre documentos fuente que cambia producto.
+- La validacion requiere credenciales, certificados, llavero, App Store Connect o deploy.
+- Un cambio afecta privacidad infantil, datos persistidos o contenido licenciado.
+- El repo aparece con multiples cambios ajenos que pisan el area de trabajo.

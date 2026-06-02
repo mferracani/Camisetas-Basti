@@ -1,0 +1,313 @@
+{
+  "schema_version": 1,
+  "project": "Camisetas Basti",
+  "last_updated": "2026-05-15",
+  "task_contract": {
+    "required_fields": [
+      "objective",
+      "source_of_truth",
+      "deliverables",
+      "definition_of_done",
+      "allowed_write_areas",
+      "out_of_scope",
+      "validation_loop",
+      "execution_mode",
+      "recommended_owner",
+      "dependencies",
+      "escalation_rule"
+    ],
+    "execution_modes": [
+      "OpenClaw",
+      "external-runner",
+      "either"
+    ],
+    "recommended_owners": [
+      "Product Manager",
+      "UX Designer",
+      "Local Data Designer",
+      "SwiftUI Engineer",
+      "Security Reviewer",
+      "QA Engineer"
+    ]
+  },
+  "features": [
+    {
+      "id": "paint-shirts",
+      "title": "Pintar y completar camisetas",
+      "status": "implemented-active",
+      "recommended_owner": "SwiftUI Engineer",
+      "execution_mode": "either",
+      "objective": "Permitir elegir una camiseta grisada, pintarla con el dedo y guardar progreso local.",
+      "source_of_truth": [
+        "PRD.md",
+        "Views/PaintView.swift",
+        "Services/ProgressStore.swift",
+        "CamisetasBastiTests/PaintEngineTests.swift",
+        "CamisetasBastiTests/ProgressStoreTests.swift"
+      ],
+      "deliverables": [
+        "Pintura restringida al contorno visible de camiseta",
+        "Progreso guardado localmente",
+        "Reset/repaint sin perder estado completado salvo accion explicita"
+      ],
+      "definition_of_done": [
+        "Build de simulador pasa",
+        "Tests de PaintEngine y ProgressStore pasan",
+        "No se exige pintar fondos blancos invisibles"
+      ],
+      "allowed_write_areas": [
+        "Views/PaintView.swift",
+        "Services/ProgressStore.swift",
+        "CamisetasBastiTests/"
+      ],
+      "out_of_scope": [
+        "Backend remoto",
+        "Sincronizacion entre dispositivos"
+      ],
+      "validation_loop": [
+        "xcodebuild -project CamisetasBasti.xcodeproj -scheme CamisetasBasti -configuration Debug -destination 'generic/platform=iOS Simulator' -derivedDataPath build/DerivedData build",
+        "xcodebuild test -project CamisetasBasti.xcodeproj -scheme CamisetasBasti -configuration Debug -destination 'platform=iOS Simulator,name=iPad Pro 13-inch (M5)' -derivedDataPath build/DerivedData"
+      ],
+      "dependencies": [
+        "Assets locales de camisetas",
+        "Mascara de camiseta correctamente calculada"
+      ],
+      "risks": [
+        "Regresion visual en iPad landscape",
+        "Calculo de progreso incluyendo fondo blanco"
+      ],
+      "escalation_rule": "Escalar si el cambio redefine la mecanica de progreso o borra progreso persistido."
+    },
+    {
+      "id": "team-and-world-cup-catalog",
+      "title": "Catalogo de equipos, paises, camisetas, escudos y banderas",
+      "status": "implemented-active",
+      "recommended_owner": "Local Data Designer",
+      "execution_mode": "either",
+      "objective": "Mantener datos locales completos para equipos, ligas, Mundial 2026, camisetas y escudos visibles.",
+      "source_of_truth": [
+        "Data/CAMI_DATA.swift",
+        "Resources/Assets.xcassets/",
+        "ASSETS.md"
+      ],
+      "deliverables": [
+        "Equipos con camiseta local/visitante cuando exista asset",
+        "Escudos visibles en detalle de equipo y torneo",
+        "Paises del Mundial con camiseta y bandera"
+      ],
+      "definition_of_done": [
+        "Build pasa",
+        "No quedan referencias a assets inexistentes",
+        "Faltantes se documentan por liga o pais"
+      ],
+      "allowed_write_areas": [
+        "Data/CAMI_DATA.swift",
+        "Resources/Assets.xcassets/",
+        "ASSETS.md"
+      ],
+      "out_of_scope": [
+        "Descarga dinamica de imagenes",
+        "Uso de internet en runtime"
+      ],
+      "validation_loop": [
+        "xcodebuild -project CamisetasBasti.xcodeproj -scheme CamisetasBasti -configuration Debug -destination 'generic/platform=iOS Simulator' -derivedDataPath build/DerivedData build"
+      ],
+      "dependencies": [
+        "Imagenes provistas por el usuario",
+        "Clasificacion manual cuando el equipo no sea identificable"
+      ],
+      "risks": [
+        "Assets con nombres ambiguos",
+        "Uso de logos/marcas sin revisar licenciamiento"
+      ],
+      "escalation_rule": "Escalar si una imagen no se puede identificar con confianza o si hay que reemplazar masivamente assets existentes."
+    },
+    {
+      "id": "tournament-simulator",
+      "title": "Simular torneo",
+      "status": "implemented-active",
+      "recommended_owner": "UX Designer",
+      "execution_mode": "either",
+      "objective": "Permitir armar llaves, avanzar equipos manualmente o simular partidos con animacion y ganador automatico.",
+      "source_of_truth": [
+        "Views/TournamentSimulatorView.swift",
+        ".project/state.md"
+      ],
+      "deliverables": [
+        "Modo Manual",
+        "Modo Partidos",
+        "Modal de partido offline con marcador, cancha, jugadores, pelota, eventos, penales y cierre",
+        "Campeon visible"
+      ],
+      "definition_of_done": [
+        "Build pasa",
+        "Tests pasan cuando se toca logica compartida",
+        "Un torneo completo puede terminar con campeon sin errores"
+      ],
+      "allowed_write_areas": [
+        "Views/TournamentSimulatorView.swift",
+        "Data/CAMI_DATA.swift",
+        "CamisetasBastiTests/"
+      ],
+      "out_of_scope": [
+        "Motor fisico externo",
+        "Dependencia de internet",
+        "Apuestas o datos reales en vivo"
+      ],
+      "validation_loop": [
+        "xcodebuild -project CamisetasBasti.xcodeproj -scheme CamisetasBasti -configuration Debug -destination 'generic/platform=iOS Simulator' -derivedDataPath build/DerivedData build",
+        "xcodebuild test -project CamisetasBasti.xcodeproj -scheme CamisetasBasti -configuration Debug -destination 'platform=iOS Simulator,name=iPad Pro 13-inch (M5)' -derivedDataPath build/DerivedData"
+      ],
+      "dependencies": [
+        "Escudos locales por liga",
+        "Datos de equipos"
+      ],
+      "risks": [
+        "Motion poco realista",
+        "Resultados repetitivos",
+        "Layout apretado en iPad 10 pulgadas"
+      ],
+      "escalation_rule": "Escalar si se pide cambiar la estructura completa de llaves o agregar reglas de una liga no cargada."
+    },
+    {
+      "id": "world-cup-fixture",
+      "title": "Fixture Mundial 2026",
+      "status": "implemented-active",
+      "recommended_owner": "Product Manager",
+      "execution_mode": "either",
+      "objective": "Mostrar grupos, partidos, carga de resultados, tablas y eliminatorias del Mundial 2026.",
+      "source_of_truth": [
+        "Views/WorldCupFixtureView.swift",
+        "Data/CAMI_DATA.swift"
+      ],
+      "deliverables": [
+        "Grupos con tabla de puntos",
+        "Carga de resultados",
+        "Empate en grupos suma 1 punto",
+        "Empate en eliminatorias permite definir ganador por penales",
+        "Llaves desde 16avos hasta campeon"
+      ],
+      "definition_of_done": [
+        "Build pasa",
+        "Reglas de clasificacion documentadas o implementadas",
+        "Horarios mostrados en hora Argentina y, cuando aplique, hora Espana"
+      ],
+      "allowed_write_areas": [
+        "Views/WorldCupFixtureView.swift",
+        "Data/CAMI_DATA.swift",
+        "CamisetasBastiTests/"
+      ],
+      "out_of_scope": [
+        "Datos en vivo",
+        "Actualizacion por API",
+        "Cambios no verificados del fixture real"
+      ],
+      "validation_loop": [
+        "xcodebuild -project CamisetasBasti.xcodeproj -scheme CamisetasBasti -configuration Debug -destination 'generic/platform=iOS Simulator' -derivedDataPath build/DerivedData build"
+      ],
+      "dependencies": [
+        "Fixture oficial actualizado",
+        "Reglas FIFA vigentes"
+      ],
+      "risks": [
+        "El fixture/reglas pueden cambiar",
+        "Horarios sensibles a zona horaria"
+      ],
+      "escalation_rule": "Escalar o verificar fuente oficial antes de cambiar fixture, reglas o horarios."
+    },
+    {
+      "id": "testflight-readiness",
+      "title": "Preparacion TestFlight",
+      "status": "blocked-external-signing",
+      "recommended_owner": "QA Engineer",
+      "execution_mode": "external-runner",
+      "objective": "Dejar la app lista para archive y subida a TestFlight desde Xcode.",
+      "source_of_truth": [
+        "TESTFLIGHT.md",
+        "project.yml",
+        "Resources/Info.plist"
+      ],
+      "deliverables": [
+        "Build y tests verdes",
+        "Version/build correctos",
+        "Signing configurado",
+        "Archive validado"
+      ],
+      "definition_of_done": [
+        "Archive exitoso",
+        "Upload a App Store Connect exitoso o paso manual documentado"
+      ],
+      "allowed_write_areas": [
+        "project.yml",
+        "TESTFLIGHT.md",
+        "Resources/Info.plist"
+      ],
+      "out_of_scope": [
+        "Crear credenciales fuera del canal seguro",
+        "Cambiar bundle id sin confirmacion"
+      ],
+      "validation_loop": [
+        "xcodebuild -project CamisetasBasti.xcodeproj -scheme CamisetasBasti -configuration Debug -destination 'generic/platform=iOS Simulator' -derivedDataPath build/DerivedData build",
+        "xcodebuild test -project CamisetasBasti.xcodeproj -scheme CamisetasBasti -configuration Debug -destination 'platform=iOS Simulator,name=iPad Pro 13-inch (M5)' -derivedDataPath build/DerivedData"
+      ],
+      "dependencies": [
+        "Apple Developer Team",
+        "Keychain/certificados",
+        "App Store Connect"
+      ],
+      "risks": [
+        "Signing local bloqueado",
+        "Bundle ID rechazado",
+        "Assets finales incompletos"
+      ],
+      "escalation_rule": "Escalar siempre que se requieran credenciales, llavero, certificados o cambios de App Store Connect."
+    },
+    {
+      "id": "project-harness",
+      "title": "Project Harness",
+      "status": "implemented-active",
+      "recommended_owner": "Product Manager",
+      "execution_mode": "either",
+      "objective": "Mantener contexto, validacion y handoffs claros para futuros agentes.",
+      "source_of_truth": [
+        "AGENTS.md",
+        ".project/state.md",
+        ".project/feature-list.json",
+        ".project/validation.md",
+        ".project/handoff.md",
+        ".project/decisions.md"
+      ],
+      "deliverables": [
+        "Instrucciones de arranque",
+        "Estado actual",
+        "Lista estructurada de features",
+        "Contrato de validacion",
+        "Handoff y decisiones"
+      ],
+      "definition_of_done": [
+        "JSON valido",
+        "Referencias reales o marcadas como TODO",
+        "Markdown legible"
+      ],
+      "allowed_write_areas": [
+        "AGENTS.md",
+        ".project/"
+      ],
+      "out_of_scope": [
+        "Cambios de producto",
+        "Refactors de codigo"
+      ],
+      "validation_loop": [
+        "python3 -m json.tool .project/feature-list.json",
+        "git diff --check"
+      ],
+      "dependencies": [
+        "Repo actual"
+      ],
+      "risks": [
+        "Documentacion quede desactualizada si no se actualiza al cerrar tareas"
+      ],
+      "escalation_rule": "Escalar si aparece conflicto entre AGENTS.md y otro archivo de autoridad."
+    }
+  ]
+}
