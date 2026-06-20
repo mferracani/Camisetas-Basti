@@ -6,13 +6,21 @@ struct TournamentSimulatorView: View {
     @State private var bracket = TournamentBracket.empty
     @State private var mode: TournamentPlayMode = .manual
     @State private var activeSimulation: MatchSimulationContext?
+    @State private var wcScores: [String: FixtureScore] = [:]
+    @State private var wcCover: WCCover?
 
-    private var leagues: [Country] {
-        CAMI_DATA.countries.filter { $0.id != "wc26" }
+    private let worldCup = WorldCup2026Fixture()
+
+    private var tournaments: [Country] {
+        CAMI_DATA.countries
+    }
+
+    private var isWorldCup: Bool {
+        selectedCountryId == "wc26"
     }
 
     private var selectedCountry: Country {
-        CAMI_DATA.country(id: selectedCountryId) ?? leagues[0]
+        CAMI_DATA.country(id: selectedCountryId) ?? tournaments[0]
     }
 
     var body: some View {
@@ -29,19 +37,19 @@ struct TournamentSimulatorView: View {
                     header(width: geo.size.width)
 
                     HStack(spacing: 14) {
-                        LeaguePicker(leagues: leagues, selectedCountryId: $selectedCountryId) {
-                            resetBracket()
+                        LeaguePicker(leagues: tournaments, selectedCountryId: $selectedCountryId) {
+                            onTournamentChange()
                         }
 
                         TournamentModePicker(mode: $mode)
 
                         Button {
                             SoundManager.shared.playTap()
-                            generateBracket()
+                            if isWorldCup { simulateAllWC() } else { generateBracket() }
                         } label: {
                             HStack(spacing: 10) {
-                                Image(systemName: "shuffle")
-                                Text("ARMAR LLAVES")
+                                Image(systemName: isWorldCup ? "dice.fill" : "shuffle")
+                                Text(isWorldCup ? "SIMULAR TODO" : "ARMAR LLAVES")
                             }
                             .font(.custom("Nunito-Black", size: 18))
                             .foregroundColor(.white)
@@ -55,15 +63,32 @@ struct TournamentSimulatorView: View {
                     }
                     .frame(maxWidth: 1120)
 
-                    TournamentBracketBoard(
-                        bracket: $bracket,
-                        title: selectedCountry.name,
-                        size: geo.size,
-                        mode: mode
-                    ) { context in
-                        activeSimulation = context
+                    if isWorldCup {
+                        WorldCupTournamentBoard(
+                            mode: mode,
+                            size: geo.size,
+                            tournament: worldCup,
+                            scores: wcScores,
+                            onPlay: { context in
+                                SoundManager.shared.playTap()
+                                wcCover = .sim(context)
+                            },
+                            onManualPick: { matchId, side in
+                                manualPickWC(matchId: matchId, side: side)
+                            }
+                        )
+                        .frame(maxWidth: 1220, maxHeight: .infinity)
+                    } else {
+                        TournamentBracketBoard(
+                            bracket: $bracket,
+                            title: selectedCountry.name,
+                            size: geo.size,
+                            mode: mode
+                        ) { context in
+                            activeSimulation = context
+                        }
+                        .frame(maxWidth: 1220, maxHeight: .infinity)
                     }
-                    .frame(maxWidth: 1220, maxHeight: .infinity)
                 }
                 .padding(.horizontal, 34)
                 .padding(.top, 22)
@@ -71,14 +96,26 @@ struct TournamentSimulatorView: View {
             }
         }
         .onAppear {
-            if bracket.roundOf16.allSatisfy({ $0.home == nil && $0.away == nil }) {
+            if !isWorldCup, bracket.roundOf16.allSatisfy({ $0.home == nil && $0.away == nil }) {
                 generateBracket()
             }
         }
         .fullScreenCover(item: $activeSimulation) { context in
-            MatchSimulationModal(context: context) { result in
-                bracket.applySimulation(context: context, result: result)
-                activeSimulation = nil
+            if let home = context.match.home, let away = context.match.away {
+                MatchSimulationModal(home: home, away: away) { result in
+                    bracket.applySimulation(context: context, result: result)
+                    activeSimulation = nil
+                }
+            }
+        }
+        .fullScreenCover(item: $wcCover) { cover in
+            switch cover {
+            case .sim(let context):
+                MatchSimulationModal(home: context.homeTeam, away: context.awayTeam, homeFlag: context.homeFlag, awayFlag: context.awayFlag) { result in
+                    finishWCSim(context, result: result)
+                }
+            case .champion(let team, let flag):
+                WCChampionCover(champion: team, flag: flag) { wcCover = nil }
             }
         }
     }
@@ -110,6 +147,81 @@ struct TournamentSimulatorView: View {
     private func resetBracket() {
         bracket = .empty
         generateBracket()
+    }
+
+    // MARK: - World Cup
+
+    private func onTournamentChange() {
+        if isWorldCup {
+            wcScores.removeAll()
+        } else {
+            resetBracket()
+        }
+    }
+
+    private func manualPickWC(matchId: String, side: MatchSide) {
+        SoundManager.shared.playTap()
+        wcScores[matchId] = FixtureScore(home: side == .home ? 1 : 0, away: side == .home ? 0 : 1)
+        crownWorldCupChampionIfNeeded(matchId: matchId)
+    }
+
+    private func finishWCSim(_ context: WorldCupSimContext, result: MatchSimulationResult) {
+        var score = FixtureScore(home: result.homeGoals, away: result.awayGoals)
+        if context.isKnockout && result.homeGoals == result.awayGoals {
+            score.penaltyWinnerId = (result.winner.id == context.homeTeam.id) ? context.homeFixtureId : context.awayFixtureId
+        }
+        wcScores[context.matchId] = score
+        if context.matchId == "wc26_m104", let champion = worldCup.champion(scores: wcScores) {
+            wcCover = .champion(team: worldCupTeam(for: champion), flag: champion.flag)
+        } else {
+            wcCover = nil
+        }
+    }
+
+    private func crownWorldCupChampionIfNeeded(matchId: String) {
+        guard matchId == "wc26_m104", let champion = worldCup.champion(scores: wcScores) else { return }
+        wcCover = .champion(team: worldCupTeam(for: champion), flag: champion.flag)
+    }
+
+    private func simulateAllWC() {
+        var newScores = wcScores
+
+        for group in worldCup.groups {
+            for match in group.matches where newScores[match.id]?.isComplete != true {
+                let result = MatchSimulationFactory.makeResult(
+                    home: worldCupTeam(for: match.home),
+                    away: worldCupTeam(for: match.away)
+                )
+                newScores[match.id] = FixtureScore(home: result.homeGoals, away: result.awayGoals)
+            }
+        }
+
+        // Each pass resolves one knockout round; five rounds need at most five passes.
+        for _ in 0..<6 {
+            let bracket = worldCup.knockoutBracket(scores: newScores)
+            var changed = false
+            for round in bracket.rounds {
+                for match in round.matches {
+                    guard let home = match.home, let away = match.away else { continue }
+                    if newScores[match.id]?.isComplete == true { continue }
+                    let homeTeam = worldCupTeam(for: home)
+                    let awayTeam = worldCupTeam(for: away)
+                    let result = MatchSimulationFactory.makeResult(home: homeTeam, away: awayTeam)
+                    var score = FixtureScore(home: result.homeGoals, away: result.awayGoals)
+                    if result.homeGoals == result.awayGoals {
+                        score.penaltyWinnerId = (result.winner.id == homeTeam.id) ? home.id : away.id
+                    }
+                    newScores[match.id] = score
+                    changed = true
+                }
+            }
+            if !changed { break }
+        }
+
+        wcScores = newScores
+        if let champion = worldCup.champion(scores: newScores) {
+            wcCover = .champion(team: worldCupTeam(for: champion), flag: champion.flag)
+        }
     }
 }
 
@@ -310,7 +422,7 @@ private struct TournamentBracketBoard: View {
         .frame(width: 20)
     }
 
-    private func advance(_ round: TournamentRound, matchIndex: Int = 0, slot: BracketSlotSide) {
+    private func advance(_ round: TournamentRound, matchIndex: Int = 0, slot: MatchSide) {
         SoundManager.shared.playTap()
         bracket.advance(round: round, matchIndex: matchIndex, slot: slot)
     }
@@ -327,7 +439,7 @@ private struct MatchView: View {
     let crestSize: CGFloat
     let mode: TournamentPlayMode
     let isRecommended: Bool
-    let onPick: (BracketSlotSide) -> Void
+    let onPick: (MatchSide) -> Void
     let onSimulate: () -> Void
 
     var body: some View {
@@ -481,8 +593,9 @@ private struct BracketSlot: View {
     }
 }
 
-private struct ChampionGloryOverlay: View {
+struct ChampionGloryOverlay: View {
     let champion: Team
+    var flag: String? = nil
     @State private var animate = false
 
     var body: some View {
@@ -511,14 +624,20 @@ private struct ChampionGloryOverlay: View {
                     .shadow(color: Color(hex: "#FFC93C").opacity(0.8), radius: animate ? 28 : 8, x: 0, y: 0)
                     .scaleEffect(animate ? 1.08 : 0.86)
 
-                CrestView(crest: champion.crest, size: 112)
-                    .padding(18)
-                    .background(
-                        Circle()
-                            .fill(Color.white)
-                            .shadow(color: Color(hex: "#FFC93C").opacity(0.85), radius: animate ? 30 : 10, x: 0, y: 0)
-                    )
-                    .scaleEffect(animate ? 1 : 0.72)
+                Group {
+                    if let flag {
+                        Text(flag).font(.system(size: 96))
+                    } else {
+                        CrestView(crest: champion.crest, size: 112)
+                    }
+                }
+                .padding(18)
+                .background(
+                    Circle()
+                        .fill(Color.white)
+                        .shadow(color: Color(hex: "#FFC93C").opacity(0.85), radius: animate ? 30 : 10, x: 0, y: 0)
+                )
+                .scaleEffect(animate ? 1 : 0.72)
 
                 Text("CAMPEÓN")
                     .font(.custom("Nunito-Black", size: 54))
@@ -597,8 +716,11 @@ private struct GloryParticle: View {
     }
 }
 
-private struct MatchSimulationModal: View {
-    let context: MatchSimulationContext
+struct MatchSimulationModal: View {
+    let home: Team
+    let away: Team
+    let homeFlag: String?
+    let awayFlag: String?
     let onFinish: (MatchSimulationResult) -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -609,10 +731,13 @@ private struct MatchSimulationModal: View {
 
     private let timer = Timer.publish(every: 0.05, on: .main, in: .common).autoconnect()
 
-    init(context: MatchSimulationContext, onFinish: @escaping (MatchSimulationResult) -> Void) {
-        self.context = context
+    init(home: Team, away: Team, homeFlag: String? = nil, awayFlag: String? = nil, onFinish: @escaping (MatchSimulationResult) -> Void) {
+        self.home = home
+        self.away = away
+        self.homeFlag = homeFlag
+        self.awayFlag = awayFlag
         self.onFinish = onFinish
-        let generated = MatchSimulationFactory.makeResult(for: context.match)
+        let generated = MatchSimulationFactory.makeResult(home: home, away: away)
         _result = State(initialValue: generated)
         _duration = State(initialValue: 36)
     }
@@ -632,7 +757,8 @@ private struct MatchSimulationModal: View {
                         .frame(maxWidth: 980)
 
                     SoccerPitchView(
-                        context: context,
+                        home: home,
+                        away: away,
                         result: result,
                         progress: progress,
                         homeScore: liveHomeGoals,
@@ -707,7 +833,7 @@ private struct MatchSimulationModal: View {
             }
             return "ATACA \(teamName)"
         }
-        let events = ["ARRANCA EL PARTIDO", "PASE DE \(context.match.home?.short.uppercased() ?? "LOCAL")", "PRESIONA \(context.match.away?.short.uppercased() ?? "VISITANTE")", "CAMBIO DE FRENTE", "RECUPERA \(context.match.away?.short.uppercased() ?? "VISITANTE")", "TOCA Y VA \(context.match.home?.short.uppercased() ?? "LOCAL")"]
+        let events = ["ARRANCA EL PARTIDO", "PASE DE \(home.short.uppercased())", "PRESIONA \(away.short.uppercased())", "CAMBIO DE FRENTE", "RECUPERA \(away.short.uppercased())", "TOCA Y VA \(home.short.uppercased())"]
         return events[min(events.count - 1, Int(progress * Double(events.count)))]
     }
 
@@ -725,7 +851,7 @@ private struct MatchSimulationModal: View {
 
     private var scoreboard: some View {
         HStack(spacing: 16) {
-            scoreTeam(team: context.match.home, score: liveHomeGoals, reverse: false)
+            scoreTeam(team: home, flag: homeFlag, score: liveHomeGoals, reverse: false)
             VStack(spacing: 3) {
                 Text("\(matchMinute)'")
                     .font(.custom("Nunito-Black", size: 18))
@@ -734,7 +860,7 @@ private struct MatchSimulationModal: View {
                     .font(.custom("Nunito-Black", size: 10))
                     .foregroundColor(.white.opacity(0.52))
             }
-            scoreTeam(team: context.match.away, score: liveAwayGoals, reverse: true)
+            scoreTeam(team: away, flag: awayFlag, score: liveAwayGoals, reverse: true)
         }
         .padding(.horizontal, 22)
         .padding(.vertical, 14)
@@ -746,11 +872,15 @@ private struct MatchSimulationModal: View {
         )
     }
 
-    private func scoreTeam(team: Team?, score: Int, reverse: Bool) -> some View {
+    private func scoreTeam(team: Team?, flag: String?, score: Int, reverse: Bool) -> some View {
         HStack(spacing: 12) {
             if reverse { Spacer(minLength: 0) }
-            if let team {
+            if let flag {
+                Text(flag).font(.system(size: 40))
+            } else if let team {
                 CrestView(crest: team.crest, size: 46)
+            }
+            if let team {
                 Text(team.short.uppercased())
                     .font(.custom("Nunito-Black", size: 18))
                     .foregroundColor(.white)
@@ -764,6 +894,10 @@ private struct MatchSimulationModal: View {
             if !reverse { Spacer(minLength: 0) }
         }
         .frame(maxWidth: .infinity)
+    }
+
+    private var winnerFlag: String? {
+        result.winner.id == home.id ? homeFlag : awayFlag
     }
 
     private var bottomEvent: some View {
@@ -784,10 +918,16 @@ private struct MatchSimulationModal: View {
             Text(result.decidedByPenalties ? "GANÓ POR PENALES" : "FINAL DEL PARTIDO")
                 .font(.custom("Nunito-Black", size: 24))
                 .foregroundColor(Color(hex: "#FFC93C"))
-            CrestView(crest: result.winner.crest, size: 96)
-                .padding(14)
-                .background(Circle().fill(Color.white))
-                .shadow(color: Color(hex: "#FFC93C").opacity(0.75), radius: 22, x: 0, y: 0)
+            Group {
+                if let winnerFlag {
+                    Text(winnerFlag).font(.system(size: 84))
+                } else {
+                    CrestView(crest: result.winner.crest, size: 96)
+                }
+            }
+            .padding(14)
+            .background(Circle().fill(Color.white))
+            .shadow(color: Color(hex: "#FFC93C").opacity(0.75), radius: 22, x: 0, y: 0)
             Text(result.winner.name.uppercased())
                 .font(.custom("Nunito-Black", size: 34))
                 .foregroundColor(.white)
@@ -822,16 +962,17 @@ private struct MatchSimulationModal: View {
         .shadow(color: Color.black.opacity(0.34), radius: 30, x: 0, y: 18)
     }
 
-    private func team(for side: BracketSlotSide) -> Team {
+    private func team(for side: MatchSide) -> Team {
         switch side {
-        case .home: return context.match.home ?? result.winner
-        case .away: return context.match.away ?? result.winner
+        case .home: return home
+        case .away: return away
         }
     }
 }
 
 private struct SoccerPitchView: View {
-    let context: MatchSimulationContext
+    let home: Team
+    let away: Team
     let result: MatchSimulationResult
     let progress: Double
     let homeScore: Int
@@ -860,8 +1001,8 @@ private struct SoccerPitchView: View {
     var body: some View {
         GeometryReader { geo in
             let play = visualPlay
-            let homeStyle = jerseyStyle(for: context.match.home, fallback: ("#75AADB", "#FFFFFF"), opponent: context.match.away)
-            let awayStyle = jerseyStyle(for: context.match.away, fallback: ("#E2272F", "#111111"), opponent: context.match.home)
+            let homeStyle = jerseyStyle(for: home, fallback: ("#75AADB", "#FFFFFF"), opponent: away)
+            let awayStyle = jerseyStyle(for: away, fallback: ("#E2272F", "#111111"), opponent: home)
 
             ZStack {
                 RoundedRectangle(cornerRadius: 28)
@@ -880,7 +1021,7 @@ private struct SoccerPitchView: View {
                 ForEach(homeBases.indices, id: \.self) { index in
                     PlayerDot(
                         style: homeStyle,
-                        label: index == 0 ? "1" : context.match.home?.short.prefix(1).uppercased() ?? "L",
+                        label: index == 0 ? "1" : home.short.prefix(1).uppercased(),
                         isActive: play.side == .home && (play.playerIndex == index || play.receiverIndex == index),
                         isGoalkeeper: index == 0
                     )
@@ -893,7 +1034,7 @@ private struct SoccerPitchView: View {
                 ForEach(awayBases.indices, id: \.self) { index in
                     PlayerDot(
                         style: awayStyle,
-                        label: index == 0 ? "1" : context.match.away?.short.prefix(1).uppercased() ?? "V",
+                        label: index == 0 ? "1" : away.short.prefix(1).uppercased(),
                         isActive: play.side == .away && (play.playerIndex == index || play.receiverIndex == index),
                         isGoalkeeper: index == 0
                     )
@@ -950,7 +1091,7 @@ private struct SoccerPitchView: View {
 
     private var visualPlay: MatchVisualPlay {
         if reduceMotion {
-            let side: BracketSlotSide = progress < 0.5 ? .home : .away
+            let side: MatchSide = progress < 0.5 ? .home : .away
             let base = point(for: side, index: progress < 0.5 ? 3 : 4)
             return MatchVisualPlay(side: side, playerIndex: 3, receiverIndex: 4, ball: base, from: base, isShot: false, localProgress: 0, outcome: nil)
         }
@@ -963,7 +1104,7 @@ private struct SoccerPitchView: View {
         let raw = progress * Double(segmentCount)
         let segment = Int(raw) % segmentCount
         let local = CGFloat(raw - floor(raw))
-        let side: BracketSlotSide = segment % 4 < 2 ? .home : .away
+        let side: MatchSide = segment % 4 < 2 ? .home : .away
         let routes = side == .home
             ? [[1, 3, 5, 6], [2, 4, 6, 5], [3, 4, 5, 3]]
             : [[1, 3, 5, 6], [2, 4, 6, 5], [3, 4, 5, 3]]
@@ -1095,7 +1236,7 @@ private struct SoccerPitchView: View {
         )
     }
 
-    private func point(for side: BracketSlotSide, index: Int) -> CGPoint {
+    private func point(for side: MatchSide, index: Int) -> CGPoint {
         switch side {
         case .home: return homeBases[index]
         case .away: return awayBases[index]
@@ -1109,7 +1250,7 @@ private struct SoccerPitchView: View {
         )
     }
 
-    private func advanceTowardGoal(from point: CGPoint, side: BracketSlotSide, amount: CGFloat) -> CGPoint {
+    private func advanceTowardGoal(from point: CGPoint, side: MatchSide, amount: CGFloat) -> CGPoint {
         CGPoint(x: point.x + (side == .home ? amount : -amount), y: point.y)
     }
 
@@ -1193,7 +1334,7 @@ private struct PlayerDot: View {
 }
 
 private struct MatchVisualPlay {
-    let side: BracketSlotSide
+    let side: MatchSide
     let playerIndex: Int
     let receiverIndex: Int
     let ball: CGPoint
@@ -1239,7 +1380,7 @@ private struct FootballView: View {
 }
 
 private struct ShotBurst: View {
-    let side: BracketSlotSide
+    let side: MatchSide
     let outcome: MatchChanceOutcome?
 
     var body: some View {
@@ -1321,12 +1462,8 @@ private struct SoccerPitchLines: Shape {
     }
 }
 
-private enum MatchSimulationFactory {
-    static func makeResult(for match: TournamentMatch) -> MatchSimulationResult {
-        guard let home = match.home, let away = match.away else {
-            preconditionFailure("A simulated match needs two teams")
-        }
-
+enum MatchSimulationFactory {
+    static func makeResult(home: Team, away: Team) -> MatchSimulationResult {
         let score = plausibleScore()
         let homeGoals = score.0
         let awayGoals = score.1
@@ -1344,7 +1481,7 @@ private enum MatchSimulationFactory {
         let totalGoals = homeGoals + awayGoals
         if totalGoals > 0 {
             let minutes = uniqueGoalMinutes(count: totalGoals)
-            var sides: [BracketSlotSide] = Array(repeating: .home, count: homeGoals) + Array(repeating: .away, count: awayGoals)
+            var sides: [MatchSide] = Array(repeating: .home, count: homeGoals) + Array(repeating: .away, count: awayGoals)
             sides.shuffle()
             events = zip(minutes, sides).map { MatchGoalEvent(minute: $0.0, side: $0.1) }.sorted { $0.minute < $1.minute }
         }
@@ -1391,7 +1528,7 @@ private enum MatchSimulationFactory {
             let minute = Int.random(in: 6...88)
             guard !used.contains(where: { abs($0 - minute) < 5 }) else { continue }
             used.insert(minute)
-            let side: BracketSlotSide = Bool.random() ? .home : .away
+            let side: MatchSide = Bool.random() ? .home : .away
             let outcome: MatchChanceOutcome = Int.random(in: 0..<100) < 68 ? .save : .wide
             chances.append(MatchChanceEvent(minute: minute, side: side, outcome: outcome))
         }
@@ -1399,7 +1536,7 @@ private enum MatchSimulationFactory {
     }
 }
 
-private enum BracketSlotSide: Equatable {
+enum MatchSide: Equatable {
     case home, away
 }
 
@@ -1452,7 +1589,7 @@ private struct MatchSimulationContext: Identifiable {
     let match: TournamentMatch
 }
 
-private struct MatchSimulationResult: Equatable {
+struct MatchSimulationResult: Equatable {
     let homeGoals: Int
     let awayGoals: Int
     let winner: Team
@@ -1461,20 +1598,20 @@ private struct MatchSimulationResult: Equatable {
     let chanceEvents: [MatchChanceEvent]
 }
 
-private struct MatchGoalEvent: Equatable, Identifiable {
+struct MatchGoalEvent: Equatable, Identifiable {
     let id = UUID()
     let minute: Int
-    let side: BracketSlotSide
+    let side: MatchSide
 }
 
-private struct MatchChanceEvent: Equatable, Identifiable {
+struct MatchChanceEvent: Equatable, Identifiable {
     let id = UUID()
     let minute: Int
-    let side: BracketSlotSide
+    let side: MatchSide
     let outcome: MatchChanceOutcome
 }
 
-private enum MatchChanceOutcome: Equatable {
+enum MatchChanceOutcome: Equatable {
     case goal
     case save
     case wide
@@ -1541,7 +1678,7 @@ private struct TournamentBracket: Equatable {
         self.champion = champion
     }
 
-    mutating func advance(round: TournamentRound, matchIndex: Int, slot: BracketSlotSide) {
+    mutating func advance(round: TournamentRound, matchIndex: Int, slot: MatchSide) {
         switch round {
         case .roundOf16:
             guard let winner = selectedTeam(in: roundOf16[matchIndex], slot: slot) else { return }
@@ -1700,7 +1837,7 @@ private struct TournamentBracket: Equatable {
         champion = nil
     }
 
-    private func selectedTeam(in match: TournamentMatch, slot: BracketSlotSide) -> Team? {
+    private func selectedTeam(in match: TournamentMatch, slot: MatchSide) -> Team? {
         switch slot {
         case .home: return match.home
         case .away: return match.away
@@ -1724,3 +1861,511 @@ private struct TournamentBracket: Equatable {
         }
     }
 }
+
+// MARK: - World Cup tournament (groups + knockouts) inside SIMULAR TORNEO
+
+private struct WorldCupSimContext: Identifiable {
+    let id = UUID()
+    let matchId: String
+    let homeFixtureId: String
+    let awayFixtureId: String
+    let homeTeam: Team
+    let awayTeam: Team
+    let homeFlag: String
+    let awayFlag: String
+    let isKnockout: Bool
+}
+
+private enum WCCover: Identifiable {
+    case sim(WorldCupSimContext)
+    case champion(team: Team, flag: String)
+
+    var id: String {
+        switch self {
+        case .sim(let context): return "sim_\(context.id)"
+        case .champion(let team, _): return "champion_\(team.id)"
+        }
+    }
+}
+
+private enum WCSection: String, CaseIterable {
+    case groups = "ZONAS"
+    case knockout = "LLAVES"
+}
+
+private struct WorldCupTournamentBoard: View {
+    let mode: TournamentPlayMode
+    let size: CGSize
+    let tournament: WorldCup2026Fixture
+    let scores: [String: FixtureScore]
+    let onPlay: (WorldCupSimContext) -> Void
+    let onManualPick: (String, MatchSide) -> Void
+
+    @State private var section: WCSection = .groups
+
+    private var crestSize: CGFloat {
+        min(max(size.width * 0.026, 26), 38)
+    }
+
+    private var groupColumns: [GridItem] {
+        let count = size.width >= 1180 ? 3 : 2
+        return Array(repeating: GridItem(.flexible(), spacing: 14), count: count)
+    }
+
+    var body: some View {
+        VStack(spacing: 14) {
+            WCSectionToggle(section: $section)
+
+            ScrollView {
+                if section == .groups {
+                    LazyVGrid(columns: groupColumns, spacing: 14) {
+                        ForEach(tournament.groups) { group in
+                            WCGroupCard(
+                                group: group,
+                                standings: tournament.standings(for: group, scores: scores),
+                                scores: scores,
+                                mode: mode,
+                                crestSize: crestSize,
+                                onPlay: onPlay,
+                                onManualPick: onManualPick
+                            )
+                        }
+                    }
+                    .padding(.vertical, 6)
+                } else {
+                    knockoutView
+                }
+            }
+        }
+        .padding(16)
+        .background(Color.white.opacity(0.06))
+        .cornerRadius(24)
+        .overlay(
+            RoundedRectangle(cornerRadius: 24).stroke(Color.white.opacity(0.12), lineWidth: 1)
+        )
+    }
+
+    private var knockoutView: some View {
+        let bracket = tournament.knockoutBracket(scores: scores)
+        return VStack(spacing: 18) {
+            if let message = bracket.message {
+                Text(message)
+                    .font(.custom("Nunito-Black", size: 15))
+                    .foregroundColor(Color(hex: "#FFC93C"))
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+                    .padding(16)
+                    .background(Color.white.opacity(0.06))
+                    .cornerRadius(16)
+            }
+
+            ForEach(bracket.rounds) { round in
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(round.title)
+                        .font(.custom("Nunito-Black", size: 20))
+                        .foregroundColor(.white)
+                    LazyVGrid(columns: knockoutColumns(matchCount: round.matches.count), spacing: 10) {
+                        ForEach(round.matches) { match in
+                            WCMatchCell(
+                                matchId: match.id,
+                                home: match.home,
+                                away: match.away,
+                                score: scores[match.id],
+                                isKnockout: true,
+                                mode: mode,
+                                crestSize: crestSize,
+                                onPlay: onPlay,
+                                onManualPick: onManualPick
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        .padding(.vertical, 6)
+    }
+
+    private func knockoutColumns(matchCount: Int) -> [GridItem] {
+        let count: Int
+        if matchCount <= 2 {
+            count = max(matchCount, 1)
+        } else if size.width >= 1180 {
+            count = 4
+        } else {
+            count = 2
+        }
+        return Array(repeating: GridItem(.flexible(), spacing: 10), count: max(count, 1))
+    }
+}
+
+private struct WCSectionToggle: View {
+    @Binding var section: WCSection
+
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(WCSection.allCases, id: \.self) { value in
+                Button {
+                    SoundManager.shared.playTap()
+                    section = value
+                } label: {
+                    Text(value.rawValue)
+                        .font(.custom("Nunito-Black", size: 15))
+                        .foregroundColor(section == value ? Color(hex: "#263645") : .white.opacity(0.72))
+                        .padding(.horizontal, 24)
+                        .frame(height: 44)
+                        .background(section == value ? Color.white : Color.clear)
+                        .cornerRadius(13)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(4)
+        .background(Color.white.opacity(0.1))
+        .cornerRadius(16)
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.14), lineWidth: 1))
+    }
+}
+
+private struct WCGroupCard: View {
+    let group: FixtureGroup
+    let standings: [FixtureStanding]
+    let scores: [String: FixtureScore]
+    let mode: TournamentPlayMode
+    let crestSize: CGFloat
+    let onPlay: (WorldCupSimContext) -> Void
+    let onManualPick: (String, MatchSide) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("ZONA \(group.letter)")
+                    .font(.custom("Nunito-Black", size: 17))
+                    .foregroundColor(.white)
+                Spacer()
+                Text("\(standings.filter { $0.played == 3 }.count)/4")
+                    .font(.custom("Nunito-Black", size: 12))
+                    .foregroundColor(.white.opacity(0.5))
+            }
+
+            VStack(spacing: 4) {
+                ForEach(Array(standings.enumerated()), id: \.element.team.id) { index, standing in
+                    WCStandingRow(index: index, standing: standing, crestSize: crestSize * 0.78)
+                }
+            }
+
+            Rectangle().fill(Color.white.opacity(0.1)).frame(height: 1)
+
+            VStack(spacing: 6) {
+                ForEach(group.matches) { match in
+                    WCMatchCell(
+                        matchId: match.id,
+                        home: match.home,
+                        away: match.away,
+                        score: scores[match.id],
+                        isKnockout: false,
+                        mode: mode,
+                        crestSize: crestSize,
+                        onPlay: onPlay,
+                        onManualPick: onManualPick
+                    )
+                }
+            }
+        }
+        .padding(12)
+        .background(Color.white.opacity(0.05))
+        .cornerRadius(16)
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.1), lineWidth: 1))
+    }
+}
+
+private struct WCFlag: View {
+    let flag: String
+    let size: CGFloat
+
+    var body: some View {
+        Text(flag)
+            .font(.system(size: size))
+            .frame(width: size * 1.18, height: size, alignment: .center)
+    }
+}
+
+private struct WCStandingRow: View {
+    let index: Int
+    let standing: FixtureStanding
+    let crestSize: CGFloat
+
+    private var posColor: Color {
+        index < 2 ? Color(hex: "#7DDB8B") : index == 2 ? Color(hex: "#FFC93C") : .white.opacity(0.4)
+    }
+
+    var body: some View {
+        HStack(spacing: 7) {
+            Text("\(index + 1)")
+                .font(.custom("Nunito-Black", size: 11))
+                .foregroundColor(posColor)
+                .frame(width: 13)
+            WCFlag(flag: standing.team.flag, size: crestSize)
+            Text(standing.team.short)
+                .font(.custom("Nunito-Black", size: 11))
+                .foregroundColor(.white)
+                .lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Text(standing.goalDifferenceText)
+                .font(.custom("Nunito-Bold", size: 10))
+                .foregroundColor(.white.opacity(0.55))
+                .frame(width: 26, alignment: .trailing)
+            Text("\(standing.points)")
+                .font(.custom("Nunito-Black", size: 12))
+                .foregroundColor(.white)
+                .frame(width: 20, alignment: .trailing)
+        }
+        .padding(.vertical, 3)
+        .padding(.horizontal, 6)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(index < 2 ? Color(hex: "#7DDB8B").opacity(0.12) : Color.clear)
+        )
+    }
+}
+
+private struct WCMatchCell: View {
+    let matchId: String
+    let home: FixtureTeam?
+    let away: FixtureTeam?
+    let score: FixtureScore?
+    let isKnockout: Bool
+    let mode: TournamentPlayMode
+    let crestSize: CGFloat
+    let onPlay: (WorldCupSimContext) -> Void
+    let onManualPick: (String, MatchSide) -> Void
+
+    private var ready: Bool { home != nil && away != nil }
+    private var played: Bool { score?.isComplete == true }
+
+    private var winnerSide: MatchSide? {
+        guard let score, let homeGoals = score.home, let awayGoals = score.away else { return nil }
+        if homeGoals > awayGoals { return .home }
+        if awayGoals > homeGoals { return .away }
+        if let penalty = score.penaltyWinnerId {
+            if penalty == home?.id { return .home }
+            if penalty == away?.id { return .away }
+        }
+        return nil
+    }
+
+    var body: some View {
+        if mode == .simulated {
+            simulatedCell
+        } else {
+            manualCell
+        }
+    }
+
+    private var simulatedCell: some View {
+        Button {
+            guard ready, !played, let context = makeContext() else { return }
+            onPlay(context)
+        } label: {
+            HStack(spacing: 5) {
+                teamRow(home, goals: score?.home, winner: winnerSide == .home)
+                Text(played ? "-" : "VS")
+                    .font(.custom("Nunito-Black", size: 10))
+                    .foregroundColor(.white.opacity(0.45))
+                teamRow(away, goals: score?.away, winner: winnerSide == .away)
+            }
+            .padding(.vertical, 7)
+            .padding(.horizontal, 9)
+            .frame(maxWidth: .infinity)
+            .background(cellBackground)
+            .cornerRadius(11)
+            .overlay(RoundedRectangle(cornerRadius: 11).stroke(cellBorder, lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+        .disabled(!ready || played)
+    }
+
+    private var manualCell: some View {
+        HStack(spacing: 5) {
+            manualChip(home, side: .home, winner: winnerSide == .home)
+            Text("-")
+                .font(.custom("Nunito-Black", size: 10))
+                .foregroundColor(.white.opacity(0.4))
+            manualChip(away, side: .away, winner: winnerSide == .away)
+        }
+        .padding(.vertical, 5)
+        .padding(.horizontal, 7)
+        .frame(maxWidth: .infinity)
+        .background(Color.white.opacity(0.05))
+        .cornerRadius(11)
+    }
+
+    private func manualChip(_ team: FixtureTeam?, side: MatchSide, winner: Bool) -> some View {
+        Button {
+            guard ready else { return }
+            onManualPick(matchId, side)
+        } label: {
+            HStack(spacing: 5) {
+                if let team {
+                    WCFlag(flag: team.flag, size: crestSize * 0.74)
+                    Text(team.short)
+                        .font(.custom("Nunito-Black", size: 10))
+                        .foregroundColor(.white)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.55)
+                } else {
+                    Text("POR DEFINIR")
+                        .font(.custom("Nunito-Bold", size: 9))
+                        .foregroundColor(.white.opacity(0.4))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.vertical, 6)
+            .padding(.horizontal, 8)
+            .frame(maxWidth: .infinity)
+            .background(winner ? Color(hex: "#7DDB8B").opacity(0.24) : Color.white.opacity(0.08))
+            .cornerRadius(9)
+            .overlay(
+                RoundedRectangle(cornerRadius: 9)
+                    .stroke(winner ? Color(hex: "#7DDB8B") : Color.clear, lineWidth: 1.5)
+            )
+        }
+        .buttonStyle(.plain)
+        .disabled(!ready)
+    }
+
+    private func teamRow(_ team: FixtureTeam?, goals: Int?, winner: Bool) -> some View {
+        HStack(spacing: 4) {
+            if let team {
+                WCFlag(flag: team.flag, size: crestSize * 0.74)
+                Text(team.short)
+                    .font(.custom("Nunito-Black", size: 9))
+                    .foregroundColor(winner ? Color(hex: "#7DDB8B") : .white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
+                if let goals {
+                    Text("\(goals)")
+                        .font(.custom("Nunito-Black", size: 12))
+                        .foregroundColor(.white)
+                }
+            } else {
+                Circle()
+                    .stroke(Color.white.opacity(0.2), style: StrokeStyle(lineWidth: 1.5, dash: [3, 3]))
+                    .frame(width: crestSize * 0.66, height: crestSize * 0.66)
+                Text("?")
+                    .font(.custom("Nunito-Black", size: 9))
+                    .foregroundColor(.white.opacity(0.4))
+            }
+            Spacer(minLength: 0)
+        }
+    }
+
+    private var cellBackground: Color {
+        if played { return Color(hex: "#2B5840").opacity(0.5) }
+        if ready { return Color.white.opacity(0.1) }
+        return Color.white.opacity(0.04)
+    }
+
+    private var cellBorder: Color {
+        if played { return Color(hex: "#7DDB8B").opacity(0.4) }
+        return Color.white.opacity(ready ? 0.14 : 0.06)
+    }
+
+    private func makeContext() -> WorldCupSimContext? {
+        guard let home, let away else { return nil }
+        return WorldCupSimContext(
+            matchId: matchId,
+            homeFixtureId: home.id,
+            awayFixtureId: away.id,
+            homeTeam: worldCupTeam(for: home),
+            awayTeam: worldCupTeam(for: away),
+            homeFlag: home.flag,
+            awayFlag: away.flag,
+            isKnockout: isKnockout
+        )
+    }
+}
+
+private struct WCChampionCover: View {
+    let champion: Team
+    let flag: String
+    let onClose: () -> Void
+
+    var body: some View {
+        ZStack {
+            LinearGradient(
+                colors: [Color(hex: "#1C2833"), Color(hex: "#0E1620")],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+
+            ChampionGloryOverlay(champion: champion, flag: flag)
+
+            VStack {
+                Spacer()
+                Button {
+                    SoundManager.shared.playTap()
+                    onClose()
+                } label: {
+                    Text("CERRAR")
+                        .font(.custom("Nunito-Black", size: 20))
+                        .foregroundColor(Color(hex: "#263645"))
+                        .padding(.horizontal, 44)
+                        .frame(height: 58)
+                        .background(Color(hex: "#FFC93C"))
+                        .cornerRadius(20)
+                        .shadow(color: Color.black.opacity(0.28), radius: 12, x: 0, y: 8)
+                }
+                .buttonStyle(.plain)
+                .padding(.bottom, 44)
+            }
+        }
+    }
+}
+
+/// Resolves a World Cup fixture team to a full `Team` (kit colors + crest) so it can drive
+/// the dark bracket UI and the animated match simulation. Uses the real selección data from
+/// `CAMI_DATA` when it exists, otherwise builds a synthetic team from national colors.
+private func worldCupTeam(for fixtureTeam: FixtureTeam) -> Team {
+    let selId = "sel_\(fixtureTeam.id)"
+    if let real = CAMI_DATA.team(countryId: "wc26", teamId: selId) {
+        return real
+    }
+    let colors = worldCupKitColors[fixtureTeam.id] ?? ["#5B6B7B", "#FFFFFF"]
+    let secondary = colors.count > 1 ? colors[1] : "#FFFFFF"
+    return Team(
+        id: selId,
+        name: fixtureTeam.name,
+        short: fixtureTeam.short,
+        home: Kit(pattern: .solid, colors: colors),
+        away: Kit(pattern: .solid, colors: [secondary, colors[0]]),
+        crest: Crest(shape: .shield, text: fixtureTeam.short, colors: colors)
+    )
+}
+
+/// National kit colors [primary, secondary] for World Cup teams without a dedicated entry in
+/// `CAMI_DATA`, so the simulated pitch and crests still show the right colors.
+private let worldCupKitColors: [String: [String]] = [
+    "south_africa": ["#007749", "#FFB81C"],
+    "czechia": ["#D7141A", "#FFFFFF"],
+    "switzerland": ["#DA291C", "#FFFFFF"],
+    "qatar": ["#8A1538", "#FFFFFF"],
+    "morocco": ["#C1272D", "#006233"],
+    "haiti": ["#00209F", "#D21034"],
+    "scotland": ["#1B3A6B", "#FFFFFF"],
+    "paraguay": ["#D52B1E", "#FFFFFF"],
+    "turkiye": ["#E30A17", "#FFFFFF"],
+    "ivory_coast": ["#FF7900", "#FFFFFF"],
+    "tunisia": ["#E70013", "#FFFFFF"],
+    "sweden": ["#FECC00", "#005293"],
+    "iran": ["#FFFFFF", "#239F40"],
+    "new_zealand": ["#FFFFFF", "#1A1A1A"],
+    "senegal": ["#FFFFFF", "#00853F"],
+    "norway": ["#BA0C2F", "#00205B"],
+    "iraq": ["#007A3D", "#FFFFFF"],
+    "uzbekistan": ["#0099B5", "#FFFFFF"],
+    "dr_congo": ["#007FFF", "#FCD116"],
+    "panama": ["#D21034", "#FFFFFF"]
+]

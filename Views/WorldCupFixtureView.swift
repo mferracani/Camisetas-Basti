@@ -483,7 +483,7 @@ private struct ScoreBox: View {
     }
 }
 
-private struct WorldCup2026Fixture {
+struct WorldCup2026Fixture {
     let groups: [FixtureGroup]
 
     init() {
@@ -600,6 +600,10 @@ private struct WorldCup2026Fixture {
         return KnockoutBracket(rounds: rounds, message: message)
     }
 
+    func champion(scores: [String: FixtureScore]) -> FixtureTeam? {
+        knockoutBracket(scores: scores).rounds.last?.matches.first?.winner(scores: scores)
+    }
+
     private func makeWinnerRound(
         title: String,
         definitions: [WinnerRoundDefinition],
@@ -682,7 +686,7 @@ private struct WorldCup2026Fixture {
         let data: [(String, [FixtureTeam])] = [
             ("A", [team("mexico", "México", "MEX", "🇲🇽", "A"), team("south_africa", "Sudáfrica", "RSA", "🇿🇦", "A"), team("south_korea", "Corea del Sur", "KOR", "🇰🇷", "A"), team("czechia", "Chequia", "CZE", "🇨🇿", "A")]),
             ("B", [team("canada", "Canadá", "CAN", "🇨🇦", "B"), team("switzerland", "Suiza", "SUI", "🇨🇭", "B"), team("qatar", "Qatar", "QAT", "🇶🇦", "B"), team("bosnia", "Bosnia y Herzegovina", "BIH", "🇧🇦", "B")]),
-            ("C", [team("brazil", "Brasil", "BRA", "🇧🇷", "C"), team("morocco", "Marruecos", "MAR", "🇲🇦", "C"), team("haiti", "Haití", "HAI", "🇭🇹", "C"), team("scotland", "Escocia", "SCO", "🏴", "C")]),
+            ("C", [team("brazil", "Brasil", "BRA", "🇧🇷", "C"), team("morocco", "Marruecos", "MAR", "🇲🇦", "C"), team("haiti", "Haití", "HAI", "🇭🇹", "C"), team("scotland", "Escocia", "SCO", "🏴󠁧󠁢󠁳󠁣󠁴󠁿", "C")]),
             ("D", [team("usa", "Estados Unidos", "USA", "🇺🇸", "D"), team("paraguay", "Paraguay", "PAR", "🇵🇾", "D"), team("australia", "Australia", "AUS", "🇦🇺", "D"), team("turkiye", "Turquía", "TUR", "🇹🇷", "D")]),
             ("E", [team("germany", "Alemania", "GER", "🇩🇪", "E"), team("curacao", "Curazao", "CUW", "🇨🇼", "E"), team("ivory_coast", "Costa de Marfil", "CIV", "🇨🇮", "E"), team("ecuador", "Ecuador", "ECU", "🇪🇨", "E")]),
             ("F", [team("netherlands", "Países Bajos", "NED", "🇳🇱", "F"), team("japan", "Japón", "JPN", "🇯🇵", "F"), team("tunisia", "Túnez", "TUN", "🇹🇳", "F"), team("sweden", "Suecia", "SWE", "🇸🇪", "F")]),
@@ -691,7 +695,7 @@ private struct WorldCup2026Fixture {
             ("I", [team("france", "Francia", "FRA", "🇫🇷", "I"), team("senegal", "Senegal", "SEN", "🇸🇳", "I"), team("norway", "Noruega", "NOR", "🇳🇴", "I"), team("iraq", "Irak", "IRQ", "🇮🇶", "I")]),
             ("J", [team("argentina", "Argentina", "ARG", "🇦🇷", "J"), team("algeria", "Argelia", "ALG", "🇩🇿", "J"), team("austria", "Austria", "AUT", "🇦🇹", "J"), team("jordan", "Jordania", "JOR", "🇯🇴", "J")]),
             ("K", [team("portugal", "Portugal", "POR", "🇵🇹", "K"), team("uzbekistan", "Uzbekistán", "UZB", "🇺🇿", "K"), team("colombia", "Colombia", "COL", "🇨🇴", "K"), team("dr_congo", "RD Congo", "COD", "🇨🇩", "K")]),
-            ("L", [team("england", "Inglaterra", "ENG", "🏴", "L"), team("croatia", "Croacia", "CRO", "🇭🇷", "L"), team("ghana", "Ghana", "GHA", "🇬🇭", "L"), team("panama", "Panamá", "PAN", "🇵🇦", "L")])
+            ("L", [team("england", "Inglaterra", "ENG", "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "L"), team("croatia", "Croacia", "CRO", "🇭🇷", "L"), team("ghana", "Ghana", "GHA", "🇬🇭", "L"), team("panama", "Panamá", "PAN", "🇵🇦", "L")])
         ]
 
         return data.map { letter, teams in
@@ -847,7 +851,7 @@ private let groupMatchDefinitions: [String: [GroupMatchDefinition]] = [
     ]
 ]
 
-private struct FixtureTeam: Identifiable, Hashable {
+struct FixtureTeam: Identifiable, Hashable {
     let id: String
     let name: String
     let short: String
@@ -855,14 +859,14 @@ private struct FixtureTeam: Identifiable, Hashable {
     let group: String
 }
 
-private struct FixtureGroup: Identifiable {
+struct FixtureGroup: Identifiable {
     let letter: String
     let teams: [FixtureTeam]
     let matches: [FixtureMatch]
     var id: String { letter }
 }
 
-private struct FixtureMatch: Identifiable {
+struct FixtureMatch: Identifiable {
     let id: String
     let group: String
     let home: FixtureTeam
@@ -882,7 +886,7 @@ private struct GroupMatchDefinition {
     }
 }
 
-private struct FixtureScheduleInfo {
+struct FixtureScheduleInfo {
     let dateArgentina: String
     let timeArgentina: String
     let spainText: String?
@@ -892,7 +896,7 @@ private struct FixtureScheduleInfo {
     }
 }
 
-private struct FixtureScore: Equatable {
+struct FixtureScore: Equatable {
     var home: Int?
     var away: Int?
     var penaltyWinnerId: String?
@@ -911,7 +915,7 @@ private struct FixtureScore: Equatable {
     }
 }
 
-private struct FixtureStanding {
+struct FixtureStanding {
     let team: FixtureTeam
     var played = 0
     var goalsFor = 0
@@ -973,7 +977,7 @@ private struct ThirdPlaceSlot {
     let allowedGroups: [String]
 }
 
-private struct KnockoutFixtureMatch: Identifiable {
+struct KnockoutFixtureMatch: Identifiable {
     let number: Int
     let id: String
     let venue: String
@@ -998,13 +1002,13 @@ private struct KnockoutFixtureMatch: Identifiable {
     }
 }
 
-private struct KnockoutRoundViewModel: Identifiable {
+struct KnockoutRoundViewModel: Identifiable {
     let title: String
     let matches: [KnockoutFixtureMatch]
     var id: String { title }
 }
 
-private struct KnockoutBracket {
+struct KnockoutBracket {
     let rounds: [KnockoutRoundViewModel]
     let message: String?
 }
