@@ -25,7 +25,7 @@ ready-for-testflight
 ## Handoffs pendientes
 - Build 2 subido a App Store Connect/TestFlight el 2026-06-20.
 - Build 3 archivado localmente el 2026-06-20 en `build/TestFlight/CamisetasBasti-build3.xcarchive`.
-- Build 3 subido a App Store Connect/TestFlight el 2026-07-16 desde commit `852ee85`.
+- Build 11 subido a App Store Connect/TestFlight el 2026-07-16 desde commit `852ee85`; App Store Connect lo muestra `Finalizado` y `Lista para enviar`.
 
 ## Open questions
-- Confirmar en App Store Connect cuando termine el procesamiento y asignarlo al grupo de testers que corresponda.
+- Si se quiere probar en TestFlight externo, asignar build 11 al grupo de testers que corresponda.

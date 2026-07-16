@@ -8,7 +8,7 @@
 - Orientacion iPad: landscape left/right
 - Bundle ID actual: `com.camisetasbasti.app`
 - Version: `1.0.0`
-- Build: `3`
+- Build local del proyecto: `3`
 - App icon: incluido en `Resources/Assets.xcassets/AppIcon.appiconset/Icon-1024.png`
 
 ## Antes de archivar
@@ -36,7 +36,11 @@
 
 ## Ultimo upload
 
-- Build `3` subido a App Store Connect/TestFlight el 2026-07-16 desde commit `852ee85` con:
+- Build `11` subido a App Store Connect/TestFlight el 2026-07-16 desde commit `852ee85`.
+- App Store Connect lo muestra como `Finalizado` y `Lista para enviar`.
+- Nota: el archive local quedo con `CFBundleVersion = 3`, pero el export uso `manageAppVersionAndBuildNumber = true` y App Store Connect registro el upload como `CFBundleVersion = 11`.
+
+Comandos usados:
 
 ```bash
 xcodebuild archive -project CamisetasBasti.xcodeproj -scheme CamisetasBasti -configuration Release -destination generic/platform=iOS -archivePath build/TestFlight/CamisetasBasti-build3-worldcup.xcarchive -allowProvisioningUpdates
