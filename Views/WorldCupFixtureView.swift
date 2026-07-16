@@ -4,8 +4,10 @@ struct WorldCupFixtureView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var selectedSection: WorldCupFixtureSection = .groups
     @State private var scores: [String: FixtureScore] = [:]
-
-    private let tournament = WorldCup2026Fixture()
+    @State private var isRandomized: Bool = false
+    @State private var tournament = WorldCup2026Fixture()
+    @State private var selectedRandomTeamIds = WorldCup2026Fixture.defaultRandomTeamIds
+    @State private var showingTeamEditor = false
 
     var body: some View {
         GeometryReader { geo in
@@ -29,6 +31,19 @@ struct WorldCupFixtureView: View {
                 .padding(.bottom, 18)
             }
         }
+        .sheet(isPresented: $showingTeamEditor) {
+            WorldCupTeamEditorSheet(
+                selectedTeamIds: $selectedRandomTeamIds,
+                lockedTeamIds: WorldCup2026Fixture.lockedRandomTeamIds,
+                teams: WorldCup2026Fixture.randomTeamPool
+            )
+        }
+        .onChange(of: selectedRandomTeamIds) { _ in
+            guard isRandomized else { return }
+            tournament = WorldCup2026Fixture(randomTeamIds: selectedRandomTeamIds)
+            scores.removeAll()
+            selectedSection = .groups
+        }
     }
 
     private func header(width: CGFloat) -> some View {
@@ -39,25 +54,92 @@ struct WorldCupFixtureView: View {
                 Text("FIXTURE MUNDIAL")
                     .font(.custom("Nunito-Black", size: min(width * 0.036, 44)))
                     .foregroundColor(Color(hex: "#3D2A1F"))
-                Text("MARCÁ RESULTADOS Y SE ARMA LA LLAVE")
-                    .font(.custom("Nunito-Bold", size: 14))
-                    .foregroundColor(Color(hex: "#A88C6A"))
+                HStack(spacing: 6) {
+                    if isRandomized {
+                        Text("🎲")
+                            .font(.system(size: 13))
+                        Text("SORTEO ALEATORIO")
+                            .font(.custom("Nunito-Bold", size: 14))
+                            .foregroundColor(Color(hex: "#FF7B3D"))
+                    } else {
+                        Text("MARCÁ RESULTADOS Y SE ARMA LA LLAVE")
+                            .font(.custom("Nunito-Bold", size: 14))
+                            .foregroundColor(Color(hex: "#A88C6A"))
+                    }
+                }
             }
             Spacer()
-            Button {
-                SoundManager.shared.playTap()
-                scores.removeAll()
-            } label: {
-                Image(systemName: "arrow.clockwise")
-                    .font(.system(size: 24, weight: .bold))
+            HStack(spacing: 10) {
+                Button {
+                    SoundManager.shared.playTap()
+                    showingTeamEditor = true
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "person.2.badge.gearshape.fill")
+                            .font(.system(size: 16, weight: .bold))
+                        Text("EQUIPOS")
+                            .font(.custom("Nunito-Black", size: 13))
+                    }
                     .foregroundColor(Color(hex: "#8B5E2B"))
-                    .frame(width: 64, height: 64)
-                    .background(Circle().fill(Color.white))
+                    .frame(height: 54)
+                    .padding(.horizontal, 14)
+                    .background(Capsule().fill(Color.white))
                     .shadow(color: Color.black.opacity(0.08), radius: 8, x: 0, y: 4)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Cambiar equipos del sorteo aleatorio")
+
+                Button {
+                    randomizeGroups()
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "shuffle")
+                            .font(.system(size: 17, weight: .bold))
+                        Text(isRandomized ? "NUEVO SORTEO" : "ALEATORIO")
+                            .font(.custom("Nunito-Black", size: 13))
+                    }
+                    .foregroundColor(isRandomized ? .white : Color(hex: "#8B5E2B"))
+                    .frame(height: 54)
+                    .padding(.horizontal, 16)
+                    .background(Capsule().fill(isRandomized ? Color(hex: "#FF7B3D") : Color.white))
+                    .shadow(color: Color.black.opacity(0.08), radius: 8, x: 0, y: 4)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Mezclar grupos de forma aleatoria")
+
+                Button {
+                    resetTournament()
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 22, weight: .bold))
+                        .foregroundColor(Color(hex: "#8B5E2B"))
+                        .frame(width: 54, height: 54)
+                        .background(Circle().fill(Color.white))
+                        .shadow(color: Color.black.opacity(0.08), radius: 8, x: 0, y: 4)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(isRandomized ? "Volver al fixture real" : "Limpiar resultados")
             }
-            .buttonStyle(.plain)
         }
         .padding(.top, 20)
+    }
+
+    private func randomizeGroups() {
+        SoundManager.shared.playTap()
+        tournament = WorldCup2026Fixture(randomTeamIds: selectedRandomTeamIds)
+        scores.removeAll()
+        isRandomized = true
+        selectedSection = .groups
+    }
+
+    private func resetTournament() {
+        SoundManager.shared.playTap()
+        if isRandomized {
+            tournament = WorldCup2026Fixture()
+            isRandomized = false
+        }
+        scores.removeAll()
+        selectedSection = .groups
     }
 
     private func groupStage(width: CGFloat) -> some View {
@@ -200,6 +282,173 @@ private struct WorldCupGroupCard: View {
     }
 }
 
+private struct WorldCupTeamEditorSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Binding var selectedTeamIds: Set<String>
+    let lockedTeamIds: Set<String>
+    let teams: [FixtureTeam]
+
+    private var sortedTeams: [FixtureTeam] {
+        teams.sorted { lhs, rhs in
+            let lhsRank = rank(for: lhs)
+            let rhsRank = rank(for: rhs)
+            if lhsRank != rhsRank { return lhsRank < rhsRank }
+            return lhs.displayName < rhs.displayName
+        }
+    }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Color(hex: "#FEF9E7").ignoresSafeArea()
+
+                VStack(alignment: .leading, spacing: 18) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("EQUIPOS DEL SORTEO")
+                            .font(.custom("Nunito-Black", size: 32))
+                            .foregroundColor(Color(hex: "#3D2A1F"))
+                        Text("ELEGÍ 48. LOS GRANDES QUEDAN FIJOS.")
+                            .font(.custom("Nunito-Bold", size: 14))
+                            .foregroundColor(Color(hex: "#A88C6A"))
+                    }
+
+                    HStack(spacing: 12) {
+                        Text("\(selectedTeamIds.count)/48")
+                            .font(.custom("Nunito-Black", size: 24))
+                            .foregroundColor(selectedTeamIds.count == 48 ? Color(hex: "#22A06B") : Color(hex: "#FF7B3D"))
+                        Text(selectedTeamIds.count == 48 ? "LISTO PARA SORTEAR" : "SACÁ O AGREGÁ EQUIPOS")
+                            .font(.custom("Nunito-Black", size: 13))
+                            .foregroundColor(Color(hex: "#3D2A1F"))
+                        Spacer()
+                        Button {
+                            SoundManager.shared.playTap()
+                            selectedTeamIds = WorldCup2026Fixture.defaultRandomTeamIds
+                        } label: {
+                            Label("REALES 2026", systemImage: "arrow.counterclockwise")
+                                .font(.custom("Nunito-Black", size: 13))
+                                .foregroundColor(Color(hex: "#8B5E2B"))
+                                .padding(.horizontal, 14)
+                                .frame(height: 44)
+                                .background(Capsule().fill(Color.white))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(14)
+                    .background(RoundedRectangle(cornerRadius: 18).fill(Color.white.opacity(0.9)))
+
+                    ScrollView {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 190), spacing: 12)], spacing: 12) {
+                            ForEach(sortedTeams) { team in
+                                WorldCupTeamToggleCard(
+                                    team: team,
+                                    isSelected: selectedTeamIds.contains(team.id),
+                                    isLocked: lockedTeamIds.contains(team.id),
+                                    canAdd: selectedTeamIds.count < WorldCup2026Fixture.randomTeamLimit,
+                                    action: { toggle(team) }
+                                )
+                            }
+                        }
+                        .padding(.bottom, 12)
+                    }
+                }
+                .padding(24)
+            }
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("LISTO") {
+                        dismiss()
+                    }
+                    .font(.custom("Nunito-Black", size: 15))
+                }
+            }
+        }
+    }
+
+    private func rank(for team: FixtureTeam) -> Int {
+        if lockedTeamIds.contains(team.id) { return 0 }
+        if selectedTeamIds.contains(team.id) { return 1 }
+        return 2
+    }
+
+    private func toggle(_ team: FixtureTeam) {
+        guard !lockedTeamIds.contains(team.id) else { return }
+        SoundManager.shared.playTap()
+
+        if selectedTeamIds.contains(team.id) {
+            selectedTeamIds.remove(team.id)
+        } else if selectedTeamIds.count < WorldCup2026Fixture.randomTeamLimit {
+            selectedTeamIds.insert(team.id)
+        }
+    }
+}
+
+private struct WorldCupTeamToggleCard: View {
+    let team: FixtureTeam
+    let isSelected: Bool
+    let isLocked: Bool
+    let canAdd: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                Text(team.flag)
+                    .font(.system(size: 24))
+                    .frame(width: 32)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(team.displayName)
+                        .font(.custom("Nunito-Black", size: 13))
+                        .foregroundColor(Color(hex: "#3D2A1F"))
+                        .lineLimit(1)
+                    Text(statusText)
+                        .font(.custom("Nunito-Black", size: 10))
+                        .foregroundColor(statusColor)
+                }
+                Spacer(minLength: 6)
+                Image(systemName: statusIcon)
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundColor(statusColor)
+            }
+            .padding(12)
+            .frame(minHeight: 70)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(backgroundColor)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(isSelected ? statusColor.opacity(0.35) : Color.clear, lineWidth: 2)
+            )
+        }
+        .buttonStyle(.plain)
+        .disabled(isLocked || (!isSelected && !canAdd))
+    }
+
+    private var statusText: String {
+        if isLocked { return "FIJO" }
+        if isSelected { return "SALE" }
+        return canAdd ? "ENTRA" : "SACÁ UNO"
+    }
+
+    private var statusIcon: String {
+        if isLocked { return "lock.fill" }
+        if isSelected { return "minus.circle.fill" }
+        return canAdd ? "plus.circle.fill" : "circle"
+    }
+
+    private var statusColor: Color {
+        if isLocked { return Color(hex: "#8B5E2B") }
+        if isSelected { return Color(hex: "#22A06B") }
+        return canAdd ? Color(hex: "#FF7B3D") : Color(hex: "#B0AAA1")
+    }
+
+    private var backgroundColor: Color {
+        if isLocked { return Color(hex: "#FFF4D8") }
+        if isSelected { return Color(hex: "#E9F9F1") }
+        return Color.white
+    }
+}
+
 private struct WorldCupStandingRow: View {
     let index: Int
     let standing: FixtureStanding
@@ -212,7 +461,7 @@ private struct WorldCupStandingRow: View {
                 .frame(width: 20)
             Text(standing.team.flag)
                 .font(.system(size: 18))
-            Text(standing.team.name)
+            Text(standing.team.displayName)
                 .font(.custom("Nunito-Bold", size: 12))
                 .foregroundColor(Color(hex: "#3D2A1F"))
                 .lineLimit(1)
@@ -484,10 +733,71 @@ private struct ScoreBox: View {
 }
 
 struct WorldCup2026Fixture {
+    static let randomTeamLimit = 48
+    static let lockedRandomTeamIds: Set<String> = ["argentina", "brazil", "spain", "france", "england"]
+    static var defaultRandomTeamIds: Set<String> {
+        Set(makeGroups().flatMap { $0.teams }.map(\.id))
+    }
+    static var randomTeamPool: [FixtureTeam] {
+        makeGroups().flatMap { $0.teams } + extraRandomTeams
+    }
+
     let groups: [FixtureGroup]
 
-    init() {
-        groups = WorldCup2026Fixture.makeGroups()
+    init(randomized: Bool = false) {
+        groups = randomized ? WorldCup2026Fixture.makeRandomizedGroups(selectedTeamIds: WorldCup2026Fixture.defaultRandomTeamIds) : WorldCup2026Fixture.makeGroups()
+    }
+
+    init(randomTeamIds: Set<String>) {
+        groups = WorldCup2026Fixture.makeRandomizedGroups(selectedTeamIds: randomTeamIds)
+    }
+
+    static func makeRandomizedGroups(selectedTeamIds: Set<String>) -> [FixtureGroup] {
+        let allTeams = selectedRandomTeams(from: selectedTeamIds).shuffled()
+        let letters = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"]
+        return letters.enumerated().map { index, letter in
+            let slice = Array(allTeams[index * 4 ..< (index + 1) * 4])
+            let teams = slice.map { t in t.withGroup(letter) }
+            return FixtureGroup(letter: letter, teams: teams, matches: makeRoundRobinMatches(group: letter, teams: teams))
+        }
+    }
+
+    static func selectedRandomTeams(from selectedTeamIds: Set<String>) -> [FixtureTeam] {
+        let pool = randomTeamPool
+        let poolIds = Set(pool.map(\.id))
+        var ids = selectedTeamIds.intersection(poolIds).union(lockedRandomTeamIds)
+
+        if ids.count > randomTeamLimit {
+            let removable = pool
+                .map(\.id)
+                .filter { ids.contains($0) && !lockedRandomTeamIds.contains($0) }
+                .dropLast(randomTeamLimit - lockedRandomTeamIds.count)
+            for id in removable {
+                ids.remove(id)
+            }
+        }
+
+        if ids.count < randomTeamLimit {
+            for team in pool where !ids.contains(team.id) {
+                ids.insert(team.id)
+                if ids.count == randomTeamLimit { break }
+            }
+        }
+
+        return pool.filter { ids.contains($0.id) }.prefix(randomTeamLimit).map { $0 }
+    }
+
+    static func makeRoundRobinMatches(group: String, teams: [FixtureTeam]) -> [FixtureMatch] {
+        let pairs: [(Int, Int)] = [(0, 1), (2, 3), (0, 2), (1, 3), (0, 3), (1, 2)]
+        return pairs.enumerated().map { index, pair in
+            FixtureMatch(
+                id: "wc26r_g\(group)_m\(index + 1)",
+                group: group,
+                home: teams[pair.0],
+                away: teams[pair.1],
+                schedule: FixtureScheduleInfo(dateArgentina: "JORNADA \(index < 2 ? 1 : index < 4 ? 2 : 3)", timeArgentina: "", spainText: nil)
+            )
+        }
     }
 
     func standings(for group: FixtureGroup, scores: [String: FixtureScore]) -> [FixtureStanding] {
@@ -724,6 +1034,25 @@ struct WorldCup2026Fixture {
     private static func team(_ id: String, _ name: String, _ short: String, _ flag: String, _ group: String) -> FixtureTeam {
         FixtureTeam(id: id, name: name, short: short, flag: flag, group: group)
     }
+
+    private static let extraRandomTeams: [FixtureTeam] = [
+        team("italy", "ITALIA", "ITA", "🇮🇹", "EXTRA"),
+        team("chile", "CHILE", "CHI", "🇨🇱", "EXTRA"),
+        team("peru", "PERU", "PER", "🇵🇪", "EXTRA"),
+        team("venezuela", "VENEZUELA", "VEN", "🇻🇪", "EXTRA"),
+        team("bolivia", "BOLIVIA", "BOL", "🇧🇴", "EXTRA"),
+        team("nigeria", "NIGERIA", "NGA", "🇳🇬", "EXTRA"),
+        team("cameroon", "CAMERUN", "CMR", "🇨🇲", "EXTRA"),
+        team("mali", "MALI", "MLI", "🇲🇱", "EXTRA"),
+        team("poland", "POLONIA", "POL", "🇵🇱", "EXTRA"),
+        team("denmark", "DINAMARCA", "DEN", "🇩🇰", "EXTRA"),
+        team("serbia", "SERBIA", "SRB", "🇷🇸", "EXTRA"),
+        team("ukraine", "UCRANIA", "UKR", "🇺🇦", "EXTRA"),
+        team("greece", "GRECIA", "GRE", "🇬🇷", "EXTRA"),
+        team("wales", "GALES", "WAL", "🏴", "EXTRA"),
+        team("ireland", "IRLANDA", "IRL", "🇮🇪", "EXTRA"),
+        team("slovenia", "ESLOVENIA", "SVN", "🇸🇮", "EXTRA")
+    ]
 }
 
 private let roundOf32Definitions: [KnockoutDefinition] = [
@@ -857,6 +1186,12 @@ struct FixtureTeam: Identifiable, Hashable {
     let short: String
     let flag: String
     let group: String
+
+    var displayName: String { name.uppercased() }
+
+    func withGroup(_ newGroup: String) -> FixtureTeam {
+        FixtureTeam(id: id, name: name, short: short, flag: flag, group: newGroup)
+    }
 }
 
 struct FixtureGroup: Identifiable {
@@ -892,7 +1227,7 @@ struct FixtureScheduleInfo {
     let spainText: String?
 
     var argentinaText: String {
-        "\(dateArgentina) · ARG \(timeArgentina)"
+        timeArgentina.isEmpty ? dateArgentina : "\(dateArgentina) · ARG \(timeArgentina)"
     }
 }
 
