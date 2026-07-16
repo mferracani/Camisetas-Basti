@@ -20,11 +20,12 @@ ready-for-testflight
 - La simulacion de partidos ahora pondera equipos por calidad/ranking local offline: favoritos tienen mas chances de ganar, pero siguen existiendo empates, penales y sorpresas.
 - En llaves, los empates definidos por penales ahora muestran una tanda visual de 5 penales por equipo, alternados, con pateador, pelota viajando al arco, arquero, gol/atajada y tribuna de fondo.
 - La vista de llaves del Mundial ahora usa un bracket horizontal simetrico con 16avos/octavos/cuartos/semifinales convergiendo en la final central, copa generada como asset local y celebracion de campeon con confeti y fuegos artificiales.
+- El sorteo aleatorio del Mundial permite editar equipos antes de mezclar zonas; Argentina, Brasil, Espana, Francia e Inglaterra quedan fijos y los demas pueden entrar/salir desde una grilla con banderas y nombres en mayusculas.
 
 ## Handoffs pendientes
 - Build 2 subido a App Store Connect/TestFlight el 2026-06-20.
 - Build 3 archivado localmente el 2026-06-20 en `build/TestFlight/CamisetasBasti-build3.xcarchive`.
-- Subir build 3 a App Store Connect/TestFlight si se quiere publicar esta tanda de cambios.
+- Build 3 subido a App Store Connect/TestFlight el 2026-07-16 desde commit `852ee85`.
 
 ## Open questions
-- Confirmar si build 3 reemplaza al build 2 para testers de TestFlight.
+- Confirmar en App Store Connect cuando termine el procesamiento y asignarlo al grupo de testers que corresponda.
