@@ -36,6 +36,13 @@
 
 ## Ultimo upload
 
+- Build `3` subido a App Store Connect/TestFlight el 2026-07-16 desde commit `852ee85` con:
+
+```bash
+xcodebuild archive -project CamisetasBasti.xcodeproj -scheme CamisetasBasti -configuration Release -destination generic/platform=iOS -archivePath build/TestFlight/CamisetasBasti-build3-worldcup.xcarchive -allowProvisioningUpdates
+xcodebuild -exportArchive -archivePath build/TestFlight/CamisetasBasti-build3-worldcup.xcarchive -exportPath build/TestFlight/export-worldcup -exportOptionsPlist ExportOptions-TestFlight.plist -allowProvisioningUpdates
+```
+
 - Build `2` subido a App Store Connect/TestFlight el 2026-06-20 con:
 
 ```bash
@@ -44,6 +51,12 @@ xcodebuild -exportArchive -archivePath build/TestFlight/CamisetasBasti.xcarchive
 ```
 
 ## Ultimo archive local
+
+- Build `3` archivado correctamente el 2026-07-16 en:
+
+```bash
+build/TestFlight/CamisetasBasti-build3-worldcup.xcarchive
+```
 
 - Build `3` archivado correctamente el 2026-06-20 en:
 
