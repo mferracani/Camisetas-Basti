@@ -3,7 +3,7 @@ import SwiftUI
 
 struct TournamentSimulatorView: View {
     @Environment(\.dismiss) private var dismiss
-    @State private var selectedCountryId = "arg"
+    @State private var selectedCountryId = "wc26"
     @State private var bracket = TournamentBracket.empty
     @State private var mode: TournamentPlayMode = .manual
     @State private var activeSimulation: MatchSimulationContext?
@@ -178,9 +178,9 @@ struct TournamentSimulatorView: View {
                     Button {
                         resetWorldCupFixture()
                     } label: {
-                        Image(systemName: "arrow.clockwise")
+                        Label("ORIGINAL", systemImage: "arrow.counterclockwise")
                     }
-                    .buttonStyle(WorldCupResetButtonStyle())
+                    .buttonStyle(WorldCupHeaderButtonStyle(isPrimary: !isWorldCupRandomized))
                     .accessibilityLabel(isWorldCupRandomized ? "Volver al fixture real" : "Limpiar resultados")
                 }
             } else {
@@ -299,17 +299,6 @@ private struct WorldCupHeaderButtonStyle: ButtonStyle {
             .padding(.horizontal, 15)
             .frame(height: 50)
             .background(Capsule().fill(isPrimary ? Color(hex: "#FF7B3D") : .white))
-            .opacity(configuration.isPressed ? 0.72 : 1)
-    }
-}
-
-private struct WorldCupResetButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.system(size: 20, weight: .bold))
-            .foregroundColor(Color(hex: "#263645"))
-            .frame(width: 50, height: 50)
-            .background(Circle().fill(Color.white))
             .opacity(configuration.isPressed ? 0.72 : 1)
     }
 }

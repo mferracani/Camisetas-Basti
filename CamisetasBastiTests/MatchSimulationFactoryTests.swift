@@ -55,6 +55,28 @@ final class MatchSimulationFactoryTests: XCTestCase {
     }
 }
 
+final class WorldCupFixtureTests: XCTestCase {
+    func testWorldCupIsAvailableInTournamentCatalog() {
+        XCTAssertEqual(CAMI_DATA.countries.first?.id, "wc26")
+        XCTAssertEqual(CAMI_DATA.country(id: "wc26")?.name, "MUNDIAL 2026")
+    }
+
+    func testRandomRosterAlwaysKeepsProtectedCountries() {
+        let fixture = WorldCup2026Fixture(randomTeamIds: [])
+        let teamIds = Set(fixture.groups.flatMap(\.teams).map(\.id))
+
+        XCTAssertEqual(fixture.groups.count, 12)
+        XCTAssertEqual(teamIds.count, 48)
+        XCTAssertTrue(WorldCup2026Fixture.lockedRandomTeamIds.isSubset(of: teamIds))
+    }
+
+    func testRandomRosterPoolIncludesAdditionalCountries() {
+        let poolIds = Set(WorldCup2026Fixture.randomTeamPool.map(\.id))
+
+        XCTAssertTrue(poolIds.isSuperset(of: ["italy", "chile", "peru", "nigeria", "denmark", "ukraine"]))
+    }
+}
+
 private struct SeededGenerator: RandomNumberGenerator {
     private var state: UInt64
 

@@ -22,6 +22,7 @@ ready-for-testflight
 - La vista de llaves del Mundial ahora usa un bracket horizontal simetrico con 16avos/octavos/cuartos/semifinales convergiendo en la final central, copa generada como asset local y celebracion de campeon con confeti y fuegos artificiales.
 - El sorteo aleatorio del Mundial permite editar equipos antes de mezclar zonas; Argentina, Brasil, Espana, Francia e Inglaterra quedan fijos y los demas pueden entrar/salir desde una grilla con banderas y nombres en mayusculas.
 - Correccion 2026-07-17: los controles `EQUIPOS` y `ALEATORIO` se muestran dentro de `SIMULAR TORNEO > MUNDIAL 2026`, que es el flujo real de juego. Mantienen las simulaciones de partidos y el bracket existente.
+- `SIMULAR TORNEO` abre por defecto en `MUNDIAL 2026` y muestra opciones explicitas `ORIGINAL`, `ALEATORIO`, `EQUIPOS` y `SIMULAR TODO` para que el flujo no dependa de descubrir el selector.
 
 ## Handoffs pendientes
 - Build 2 subido a App Store Connect/TestFlight el 2026-06-20.
