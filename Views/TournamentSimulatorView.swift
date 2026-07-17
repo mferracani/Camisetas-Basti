@@ -9,8 +9,10 @@ struct TournamentSimulatorView: View {
     @State private var activeSimulation: MatchSimulationContext?
     @State private var wcScores: [String: FixtureScore] = [:]
     @State private var wcCover: WCCover?
-
-    private let worldCup = WorldCup2026Fixture()
+    @State private var worldCup = WorldCup2026Fixture()
+    @State private var selectedRandomTeamIds = WorldCup2026Fixture.defaultRandomTeamIds
+    @State private var isWorldCupRandomized = false
+    @State private var showingWorldCupTeamEditor = false
 
     private var tournaments: [Country] {
         CAMI_DATA.countries
@@ -125,6 +127,18 @@ struct TournamentSimulatorView: View {
                 WCChampionCover(champion: team, flag: flag) { wcCover = nil }
             }
         }
+        .sheet(isPresented: $showingWorldCupTeamEditor) {
+            WorldCupTeamEditorSheet(
+                selectedTeamIds: $selectedRandomTeamIds,
+                lockedTeamIds: WorldCup2026Fixture.lockedRandomTeamIds,
+                teams: WorldCup2026Fixture.randomTeamPool
+            )
+        }
+        .onChange(of: selectedRandomTeamIds) { _ in
+            guard isWorldCup && isWorldCupRandomized else { return }
+            worldCup = WorldCup2026Fixture(randomTeamIds: selectedRandomTeamIds)
+            wcScores.removeAll()
+        }
     }
 
     private func header(width: CGFloat) -> some View {
@@ -142,7 +156,36 @@ struct TournamentSimulatorView: View {
                     .foregroundColor(.white.opacity(0.62))
             }
             Spacer()
-            Circle().fill(Color.clear).frame(width: 64, height: 64)
+            if isWorldCup {
+                HStack(spacing: 10) {
+                    Button {
+                        SoundManager.shared.playTap()
+                        showingWorldCupTeamEditor = true
+                    } label: {
+                        Label("EQUIPOS", systemImage: "person.2.badge.gearshape.fill")
+                    }
+                    .buttonStyle(WorldCupHeaderButtonStyle(isPrimary: false))
+                    .accessibilityLabel("Cambiar equipos del sorteo aleatorio")
+
+                    Button {
+                        randomizeWorldCupGroups()
+                    } label: {
+                        Label(isWorldCupRandomized ? "NUEVO SORTEO" : "ALEATORIO", systemImage: "shuffle")
+                    }
+                    .buttonStyle(WorldCupHeaderButtonStyle(isPrimary: isWorldCupRandomized))
+                    .accessibilityLabel("Mezclar grupos de forma aleatoria")
+
+                    Button {
+                        resetWorldCupFixture()
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
+                    }
+                    .buttonStyle(WorldCupResetButtonStyle())
+                    .accessibilityLabel(isWorldCupRandomized ? "Volver al fixture real" : "Limpiar resultados")
+                }
+            } else {
+                Circle().fill(Color.clear).frame(width: 64, height: 64)
+            }
         }
     }
 
@@ -164,6 +207,20 @@ struct TournamentSimulatorView: View {
         } else {
             resetBracket()
         }
+    }
+
+    private func randomizeWorldCupGroups() {
+        SoundManager.shared.playTap()
+        worldCup = WorldCup2026Fixture(randomTeamIds: selectedRandomTeamIds)
+        wcScores.removeAll()
+        isWorldCupRandomized = true
+    }
+
+    private func resetWorldCupFixture() {
+        SoundManager.shared.playTap()
+        worldCup = WorldCup2026Fixture()
+        wcScores.removeAll()
+        isWorldCupRandomized = false
     }
 
     private func manualPickWC(matchId: String, side: MatchSide) {
@@ -229,6 +286,31 @@ struct TournamentSimulatorView: View {
         if let champion = worldCup.champion(scores: newScores) {
             wcCover = .champion(team: worldCupTeam(for: champion), flag: champion.flag)
         }
+    }
+}
+
+private struct WorldCupHeaderButtonStyle: ButtonStyle {
+    let isPrimary: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.custom("Nunito-Black", size: 13))
+            .foregroundColor(isPrimary ? .white : Color(hex: "#263645"))
+            .padding(.horizontal, 15)
+            .frame(height: 50)
+            .background(Capsule().fill(isPrimary ? Color(hex: "#FF7B3D") : .white))
+            .opacity(configuration.isPressed ? 0.72 : 1)
+    }
+}
+
+private struct WorldCupResetButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 20, weight: .bold))
+            .foregroundColor(Color(hex: "#263645"))
+            .frame(width: 50, height: 50)
+            .background(Circle().fill(Color.white))
+            .opacity(configuration.isPressed ? 0.72 : 1)
     }
 }
 

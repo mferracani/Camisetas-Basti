@@ -282,7 +282,7 @@ private struct WorldCupGroupCard: View {
     }
 }
 
-private struct WorldCupTeamEditorSheet: View {
+struct WorldCupTeamEditorSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Binding var selectedTeamIds: Set<String>
     let lockedTeamIds: Set<String>
