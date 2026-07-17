@@ -23,12 +23,14 @@ ready-for-testflight
 - El sorteo aleatorio del Mundial permite editar equipos antes de mezclar zonas; Argentina, Brasil, Espana, Francia e Inglaterra quedan fijos y los demas pueden entrar/salir desde una grilla con banderas y nombres en mayusculas.
 - Correccion 2026-07-17: los controles `EQUIPOS` y `ALEATORIO` se muestran dentro de `SIMULAR TORNEO > MUNDIAL 2026`, que es el flujo real de juego. Mantienen las simulaciones de partidos y el bracket existente.
 - `SIMULAR TORNEO` abre por defecto en `MUNDIAL 2026` y muestra opciones explicitas `ORIGINAL`, `ALEATORIO`, `EQUIPOS` y `SIMULAR TODO` para que el flujo no dependa de descubrir el selector.
+- Diagnostico build 13: se archivo desde el checkout `task/project-harness-runner-toggle`, cuyo `TournamentSimulatorView` filtraba `wc26`; por eso TestFlight no mostraba el Mundial aunque la correccion ya estaba en `main`.
+- Los releases ahora deben usar `scripts/archive-testflight.sh`, que exige `main` limpio y sincronizado y valida los marcadores funcionales del Mundial antes de archivar.
 
 ## Handoffs pendientes
 - Build 2 subido a App Store Connect/TestFlight el 2026-06-20.
 - Build 3 archivado localmente el 2026-06-20 en `build/TestFlight/CamisetasBasti-build3.xcarchive`.
 - Build 11 subido a App Store Connect/TestFlight el 2026-07-16 desde commit `852ee85`; App Store Connect lo muestra `Finalizado` y `Lista para enviar`.
-- Pendiente: subir un nuevo build con la correccion de entrada a los controles de sorteo del Mundial. El archive build 12 desde `fb90350` compilo hasta `CodeSign`, pero se cancelo porque el llavero no autorizo el uso desatendido de la clave privada; no se genero ni se subio un build nuevo.
+- Pendiente: subir el build 14 o posterior desde `main`. El archive correcto compila hasta `CodeSign`, pero el llavero requiere autorizacion local de la clave privada; los builds 12 y 13 existentes se generaron desde el checkout equivocado y no contienen la entrada al Mundial en `SIMULAR TORNEO`.
 
 ## Open questions
 - Si se quiere probar en TestFlight externo, asignar build 11 al grupo de testers que corresponda.

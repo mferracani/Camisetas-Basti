@@ -13,11 +13,14 @@
 
 ## Antes de archivar
 
-1. En Xcode, seleccionar el target `CamisetasBasti`.
-2. Entrar a `Signing & Capabilities`.
-3. Activar `Automatically manage signing`.
-4. Seleccionar el Apple Developer Team correcto.
-5. Si App Store Connect rechaza el Bundle ID actual, cambiar `PRODUCT_BUNDLE_IDENTIFIER` en `project.yml` y regenerar con `xcodegen generate`.
+1. Usar exclusivamente un checkout limpio de `main`, sincronizado con `origin/main`.
+2. Ejecutar `scripts/archive-testflight.sh <build-number>`. El script cancela el release si el checkout no es `main` o si `SIMULAR TORNEO` no contiene las opciones del Mundial.
+   Para validar solamente la procedencia sin archivar: `RELEASE_PREFLIGHT_ONLY=1 scripts/archive-testflight.sh <build-number>`.
+3. En Xcode, seleccionar el target `CamisetasBasti`.
+4. Entrar a `Signing & Capabilities`.
+5. Activar `Automatically manage signing`.
+6. Seleccionar el Apple Developer Team correcto.
+7. Si App Store Connect rechaza el Bundle ID actual, cambiar `PRODUCT_BUNDLE_IDENTIFIER` en `project.yml` y regenerar con `xcodegen generate`.
 
 ## Archive
 
@@ -35,6 +38,9 @@
 - Si `xcodebuild archive -allowProvisioningUpdates` falla con `PLA Update available`, aceptar el Program License Agreement pendiente en Apple Developer para el Team `Q2TG5FA7M7` y volver a correr el archive.
 
 ## Ultimo upload
+
+- Builds `12` y `13` subidos el 2026-07-17 desde un checkout de trabajo que excluia `wc26` de `SIMULAR TORNEO`; no sirven para validar la funcionalidad del Mundial.
+- El proximo build debe salir de `main` en commit `028b9f0` o posterior mediante `scripts/archive-testflight.sh`.
 
 - Build `11` subido a App Store Connect/TestFlight el 2026-07-16 desde commit `852ee85`.
 - App Store Connect lo muestra como `Finalizado` y `Lista para enviar`.
