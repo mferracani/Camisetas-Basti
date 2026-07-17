@@ -27,7 +27,7 @@ ready-for-testflight
 - Build 2 subido a App Store Connect/TestFlight el 2026-06-20.
 - Build 3 archivado localmente el 2026-06-20 en `build/TestFlight/CamisetasBasti-build3.xcarchive`.
 - Build 11 subido a App Store Connect/TestFlight el 2026-07-16 desde commit `852ee85`; App Store Connect lo muestra `Finalizado` y `Lista para enviar`.
-- Pendiente: subir un nuevo build con la correccion de entrada a los controles de sorteo del Mundial.
+- Pendiente: subir un nuevo build con la correccion de entrada a los controles de sorteo del Mundial. El archive automatizado del 2026-07-17 se cancelo tras quedar bloqueado en una operacion interna de Xcode; no se genero ni se subio un build nuevo.
 
 ## Open questions
 - Si se quiere probar en TestFlight externo, asignar build 11 al grupo de testers que corresponda.
