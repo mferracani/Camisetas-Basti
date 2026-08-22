@@ -45,13 +45,13 @@ Basti puede completar un torneo simulado entero, desde octavos hasta campeon, si
 - Plataforma principal: iPad horizontal.
 - Soporte visual: iPad 12/13 pulgadas y 10 pulgadas.
 - Offline first: no usar internet ni servicios externos.
-- Duracion real por partido: 30 a 45 segundos.
+- Duracion real por partido: 35 a 50 segundos.
 - La simulacion debe ser suficientemente variada para que torneos consecutivos no se sientan iguales.
 - La nueva modalidad no debe romper la modalidad manual existente.
 
 ## Riesgos conocidos
 - Si la animacion es demasiado decorativa y no comunica goles/resultado, Basti puede no entender por que avanzo un equipo.
-- Si la duracion de 30-45 segundos se siente lenta, puede necesitar opcion de acelerar o saltar partido mas adelante.
+- Si la duracion de 35-50 segundos se siente lenta, puede necesitar opcion de acelerar o saltar partido mas adelante.
 - Si el algoritmo de resultados es muy random, pueden aparecer marcadores poco creibles con demasiada frecuencia.
 - Si el modal no esta bien adaptado a iPad 10 pulgadas, la cancha, marcador y boton final pueden competir por espacio.
 - Si no hay estados claros de partido pendiente/jugado, puede haber confusion sobre que partido toca simular despues.

@@ -14,6 +14,7 @@
 		33384284719F7D4FFDFF8B52 /* SoundManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D78522FA3E5CBC41470F282 /* SoundManager.swift */; };
 		4157C2B2BF44C4C08AF63C2C /* FlagView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B0A727CA581C2D776BC96D4 /* FlagView.swift */; };
 		43E07F990CA0644E830401C4 /* AlbumView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29B6F57AE22D644396CCCA85 /* AlbumView.swift */; };
+		4AABF8CF219FC64EEA218A33 /* MatchSimulation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A4E77DE5230A87E6BF2DC1D /* MatchSimulation.swift */; };
 		6EB48F0BED1A628281A77CC7 /* CAMI_DATA.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6B61EC2ABA669CFCE8D80AA /* CAMI_DATA.swift */; };
 		7C2BD79FCD44FAA76C895D80 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C931DEA97DE4115D3EE444A /* Models.swift */; };
 		7F6646249F32649ADAFD2AAF /* CountriesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8371E98AF78A40900BA0030C /* CountriesView.swift */; };
@@ -63,6 +64,7 @@
 		15560836092BE03FFC841988 /* ProgressStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressStore.swift; sourceTree = "<group>"; };
 		1C68FA8D81A9FFCC9098D098 /* CamisetasBasti.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = CamisetasBasti.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		29B6F57AE22D644396CCCA85 /* AlbumView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlbumView.swift; sourceTree = "<group>"; };
+		3A4E77DE5230A87E6BF2DC1D /* MatchSimulation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchSimulation.swift; sourceTree = "<group>"; };
 		47DC59B7B8A7BDBED726CA51 /* MatchSimulationFactoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchSimulationFactoryTests.swift; sourceTree = "<group>"; };
 		47FD99742A8677A1E7284FEB /* AlbumCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlbumCell.swift; sourceTree = "<group>"; };
 		4C931DEA97DE4115D3EE444A /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
@@ -99,6 +101,7 @@
 		1EC7E5F9FA2FEB0FF1F5D8CB /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				3A4E77DE5230A87E6BF2DC1D /* MatchSimulation.swift */,
 				4C931DEA97DE4115D3EE444A /* Models.swift */,
 			);
 			path = Models;
@@ -353,6 +356,7 @@
 				4157C2B2BF44C4C08AF63C2C /* FlagView.swift in Sources */,
 				DAF0142365254A49392E492D /* GamesView.swift in Sources */,
 				0FD8B26C0F03541C7FC4FACF /* HomeView.swift in Sources */,
+				4AABF8CF219FC64EEA218A33 /* MatchSimulation.swift in Sources */,
 				7C2BD79FCD44FAA76C895D80 /* Models.swift in Sources */,
 				2DFF7BE87CECAC210407D4F5 /* PaintView.swift in Sources */,
 				FEE734781B2A067C692DF0C0 /* ProgressStars.swift in Sources */,

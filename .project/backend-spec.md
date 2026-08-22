@@ -721,6 +721,37 @@ Los contratos de arriba son la fuente de verdad. El engineer puede empezar con:
 
 ---
 
-*Backend Spec generado desde PRD.md y ux-spec.md · Estado: LISTO PARA APROBACIÓN*
+*Backend Spec generado desde PRD.md y ux-spec.md · Estado: APROBADO / IMPLEMENTADO*
 
-**Próximo paso:** Si el usuario aprueba este Backend Spec, actualizar `.project/state.md` (fase = "frontend") y handoff a `@swiftui-engineer`.
+## 11. CONTRATO LOCAL — SIMULACIÓN DE PARTIDOS V2 (2026-08-22)
+
+La simulación es efímera y 100% local. No agrega persistencia, red, analytics ni datos del usuario.
+
+### Modelos
+
+- `MatchSimulation`: agrupa un único `MatchSimulationResult` y su timeline `[MatchBeat]`.
+- `MatchBeat`: intervalo normalizado, acción, posesión antes/después, pelota inicial/final y posiciones iniciales/finales de ambos equipos.
+- `MatchAction`: `kickoff`, `carry`, `pass`, `pressure`, `duel`, `interception`, `tackle`, `shot`, `restart`, `finalWhistle`.
+- `MatchShotOutcome`: `goal`, `saved`, `wide`, `blocked`.
+- `PitchPoint`: coordenadas normalizadas de cancha.
+- `MatchPitchLayout`: clamp de jugadores, separación visual corregida por aspecto e interpolación sin superposiciones.
+
+### Invariantes
+
+- `MatchSimulation` se crea una sola vez por modal y se conserva unido en `@State`; resultado y beats nunca se regeneran por separado.
+- `beat[n].ballEnd == beat[n+1].ballStart`.
+- Las posiciones finales de un beat son las posiciones iniciales del siguiente.
+- `possessionAfter` coincide con `possessionBefore` del beat siguiente.
+- Hay 6 posiciones válidas por equipo, con índices `0...5`.
+- Todos los jugadores permanecen dentro de `x: 0.04...0.96` y `y: 0.16...0.84`.
+- El dueño de una acción controlada empieza sobre la pelota; el dueño final queda protegido por el resolver de separación.
+- Sólo un `shot(.goal)` suma al marcador y la cantidad de esos eventos coincide con `MatchSimulationResult`.
+
+### Aleatoriedad y tests
+
+- Producción usa `SystemRandomNumberGenerator`.
+- Tests inyectan un `RandomNumberGenerator` con semilla para obtener timelines reproducibles.
+- La API previa `makeResult(home:away:)` se mantiene para no afectar bracket, Mundial ni penales.
+- Archivo fuente: `Models/MatchSimulation.swift`.
+
+**Handoff actual:** QA / release. El contrato de datos local y la implementación SwiftUI están completos; no requiere migración de contenido ni de `UserDefaults`.

@@ -260,3 +260,21 @@ Próximo agente: **QA Engineer**
 - Generar tests unitarios (XCTest) para `ProgressStore` y `PaintEngine`
 - Generar tests de UI (XCUITest) para flujo crítico: Splash → Home → País → Equipo → Pintar → Ficha
 - Checklist manual de usabilidad infantil (tamaños de botón, feedback táctil, sonidos)
+
+---
+
+## 12. Delta review — Simulación de partidos v2 (2026-08-22)
+
+**Veredicto:** ✅ Gate 3 aprobado sin hallazgos críticos, altos ni medios.
+
+- La nueva timeline sigue siendo completamente local y efímera.
+- No incorpora red, backend, analytics, telemetría, PII, identificadores infantiles ni persistencia adicional.
+- `MatchSimulation` conserva resultado y eventos como una sola unidad de estado, evitando desincronización al reconstruir vistas SwiftUI.
+- El resolver de posiciones es determinístico y acotado a 24 pasadas sobre 6 jugadores; no introduce riesgo práctico de DoS.
+- Todos los índices generados están en `0...5` y la vista itera los índices reales de los arreglos.
+- Los reinicios reposicionan la pelota mientras está oculta y mantienen jugadores dentro de la cancha.
+- Al finalizar, el timer deja de mutar estado y renderizar detrás del panel de cierre.
+- `Reduce Motion` evita springs, giro continuo y pulsaciones sin alterar la lógica del resultado.
+- La cancha decorativa se oculta a VoiceOver y el relato expone minuto, marcador y evento como una sola actualización accesible.
+
+No se requieren cambios de privacidad ni declaraciones nuevas en App Store Connect por esta mejora.

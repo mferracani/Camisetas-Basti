@@ -660,6 +660,36 @@ SPLASH (launch)
 
 ---
 
+### 4.9 ADDENDUM APROBADO — SIMULACIÓN DE PARTIDOS V2 (2026-08-22)
+
+Este addendum incorpora al PRD el flujo de torneo que ya estaba aprobado en `state.md` y `ux-spec.md`, y formaliza el pedido de mejorar la interacción de las jugadas.
+
+**Objetivo:** que un partido automático se entienda como una secuencia futbolística continua y no como movimientos aleatorios de pelota y jugadores.
+
+**Contrato funcional:**
+- Partido automático de 35–50 segundos, offline y con cámara superior fija.
+- 6 jugadores por equipo: arquero, defensores, mediocampistas y atacantes.
+- Secuencias conectadas de saque, conducción, pase, presión, duelo, intercepción, quite, remate y reposición.
+- La posesión sólo cambia por una causa visible: intercepción, quite, atajada, bloqueo, pelota afuera o gol.
+- Cada partido incluye pases y recuperaciones de ambos equipos, además de remates afuera, atajados y bloqueados.
+- El marcador cambia únicamente cuando un remate definido como gol cruza la línea; los goles visibles deben coincidir con el resultado final y la llave.
+- Los reinicios ocurren desde posiciones futbolísticas válidas y ocultan el reposicionamiento de la pelota para evitar saltos visibles.
+- El arquero reacciona ante goles, atajadas y remates desviados.
+- Los jugadores mantienen separación legible durante toda la trayectoria, medida con la proporción real 1.72:1 de la cancha.
+- `Reduce Motion` conserva las mismas causas y resultados mediante estados discretos, sin giro de pelota ni transiciones spring.
+
+**Fuera de alcance:** física real de colisiones, 11 contra 11, tácticas configurables, offside, faltas, tarjetas, lesiones, cambios, cámara móvil, 3D, replays y datos deportivos online.
+
+**Criterios de aceptación:**
+- No hay teleportaciones de pelota entre acciones consecutivas.
+- El jugador que controla una acción empieza sobre la pelota y el receptor termina en el punto de llegada.
+- Todo robo ocurre con defensor y atacante próximos; toda intercepción corta una línea de pase.
+- Cada remate termina de forma inequívoca en gol, atajada, bloqueo o afuera.
+- No hay jugadores fuera de la cancha ni superposiciones persistentes entre compañeros.
+- La simulación completa, el cierre y el avance de llave funcionan en iPad horizontal sin regresiones en modo Manual ni penales.
+
+---
+
 ## 5. BACKEND & DATOS LOCAL-FIRST
 
 **IMPORTANTE:** Solo datos locales. No backend remoto.
@@ -908,4 +938,4 @@ struct GamesStats: Codable {
 
 ---
 
-*Documento generado a partir del diseño detectado en `/DISEÑO CAMISETAS/`. Última actualización: 2026-04-29.*
+*Documento generado a partir del diseño detectado en `/DISEÑO CAMISETAS/`. Última actualización: 2026-08-22.*

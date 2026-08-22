@@ -153,9 +153,10 @@
 
 | Suite | Archivo | Casos | Estado |
 |-------|---------|-------|--------|
-| Unit — ProgressStore | `ProgressStoreTests.swift` | 11 tests | ⬜ Pass |
-| Unit — PaintEngine | `PaintEngineTests.swift` | 9 tests | ⬜ Pass |
-| UI — Critical Flow | `CamisetasBastiUITests.swift` | 4 tests | ⬜ Pass |
+| Unit — ProgressStore | `ProgressStoreTests.swift` | 12 tests | ✅ Pass 2026-08-22 |
+| Unit — PaintEngine | `PaintEngineTests.swift` | 10 tests | ✅ Pass 2026-08-22 |
+| Unit — MatchSimulation | `MatchSimulationFactoryTests.swift` | 11 tests de motor + 3 de fixture | ✅ Pass 2026-08-22 |
+| UI — Critical Flow | `CamisetasBastiUITests.swift` | 4 tests | ⚠️ No incluidos en el scheme actual; no cubren torneo |
 
 **Comando para ejecutar:**
 ```bash
@@ -164,7 +165,35 @@ xcodebuild test -scheme CamisetasBasti -destination 'platform=iOS Simulator,name
 
 ---
 
-## 10. Assets Faltantes (Bloqueantes para Submit)
+## 10. Simulación de partidos v2
+
+### Cobertura automatizada
+
+- [x] Misma semilla produce el mismo resultado y timeline.
+- [x] Continuidad de pelota, jugadores, posesión y progreso entre beats.
+- [x] Pases y recuperaciones de ambos equipos en todas las semillas probadas.
+- [x] Presencia de remate afuera, atajada y bloqueo.
+- [x] Goles de timeline iguales al marcador final.
+- [x] Separación entre compañeros corregida por aspecto en `t = 0, 0.25, 0.5, 0.75, 1`.
+- [x] Jugadores dentro del área jugable durante los reinicios.
+- [x] Dueño de cada acción controlada ubicado sobre la pelota al comenzar.
+- [x] Distribución ponderada favorece al equipo fuerte sin eliminar sorpresas.
+- [x] Tanda de penales alterna 5 remates por equipo y respeta al ganador.
+
+### Smoke visual en iPad (A16) horizontal — 2026-08-22
+
+- [x] Navegación `Splash → Home → SIMULAR TORNEO → Partidos → partido`.
+- [x] 6 jugadores por equipo, camiseta distinguible y pelota rastreable.
+- [x] Pases, presión y duelo sin saltos de pelota.
+- [x] Remate afuera visible, con feedback dentro de la cancha y posterior saque de arco.
+- [x] Marcador, minuto, banda de relato y panel final legibles sin recortes.
+- [x] VoiceOver recibe un único resumen de minuto, marcador y jugada; la cancha no expone 12 elementos decorativos.
+- [ ] Ejecutar smoke manual específico con `Reduce Motion` antes del próximo TestFlight.
+- [ ] Agregar un XCUITest determinístico del flujo torneo → partido → `CERRAR` → avance de llave.
+
+---
+
+## 11. Assets Faltantes (Bloqueantes para Submit)
 
 | Asset | Ubicación | Estado |
 |-------|-----------|--------|
@@ -191,7 +220,8 @@ xcodebuild test -scheme CamisetasBasti -destination 'platform=iOS Simulator,name
 | Orientaciones | 7 | 0 | ⬜ |
 | Edge cases | 7 | 0 | ⬜ |
 | Rendimiento | 5 | 0 | ⬜ |
-| Tests | 3 suites | 0 | ⬜ |
+| Tests unitarios | 36 casos | 36 | ✅ |
+| UI automatizada de torneo | 1 flujo requerido | 0 | ⚠️ Pendiente |
 | Assets | 8 | 0 | 🔴 |
 
 **Veredicto provisional:** ⬜ **NO APROBADO para submit** — faltan assets esenciales (fuentes, sonidos, icono, launch screen).

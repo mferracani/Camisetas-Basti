@@ -85,7 +85,7 @@ Formato sugerido:
 
 El tiempo puede ser ficticio:
 - inicia en `0'`;
-- avanza hasta `90'` durante los 30-45 segundos reales;
+- avanza hasta `90'` durante los 35-50 segundos reales;
 - si hay goles, el marcador cambia en el momento del evento.
 
 ### Cancha
@@ -228,3 +228,61 @@ La implementacion deberia crear:
 - Al cerrar, el ganador aparece en la siguiente fase.
 - Se puede completar un torneo completo hasta campeon simulado.
 - En iPad 10 y 12/13 horizontal no hay elementos cortados, superpuestos ni botones chicos.
+
+## Addendum UX — Realismo narrativo v2 (2026-08-22)
+
+### Principio de interacción
+
+La simulación usa una timeline de microjugadas conectadas. Cada evento empieza exactamente donde terminó el anterior:
+
+`POSESIÓN → PASE / CONDUCCIÓN → PRESIÓN → DUELO / INTERCEPCIÓN → REMATE → REPOSICIÓN`
+
+No se busca física profesional. El realismo surge de que cada cambio tiene causa, continuidad y una consecuencia visible.
+
+### Estados aprobados
+
+- `kickoff`: saque inicial con pateador sobre la pelota.
+- `carry`: conducción corta con la pelota controlada.
+- `pass`: la pelota sale del pasador, queda libre durante el viaje y llega al receptor.
+- `pressure`: un defensor sale al cruce y el resto conserva la forma.
+- `duel`: atacante y defensor disputan próximos; el resultado es legible.
+- `interception`: el defensor corta la trayectoria antes del receptor.
+- `tackle`: el defensor alcanza al portador y sale con la pelota.
+- `shot`: resultado diferenciado en gol, atajada, afuera o bloqueo.
+- `restart`: saque del medio, salida del arquero, saque de arco o despeje.
+- `finalWhistle`: pelota detenida y resultado final.
+
+### Claridad visual
+
+- 6 jugadores por equipo para conservar roles sin saturar iPad 10.
+- Aro blanco sólido para quien controla la pelota.
+- Aro amarillo punteado para el próximo receptor.
+- Aro naranja para el defensor que presiona.
+- Trail sólo durante pases largos y remates.
+- La pelota permanece por encima de los jugadores y nunca cambia de dueño durante el vuelo.
+- El feedback `AFUERA` se mantiene dentro del área visible aunque la pelota termine junto al borde.
+- La formación mantiene una separación mínima corregida por la relación 1.72:1 de la cancha, también durante la interpolación y no sólo al final de cada jugada.
+
+### Ritmo y motion
+
+- Partido completo: 35–50 segundos.
+- Pases y conducciones: aproximadamente 0,55–1,10 segundos relativos.
+- Presiones, duelos e intercepciones: aproximadamente 0,45–0,85 segundos relativos.
+- Remate y resolución: aproximadamente 0,90–1,35 segundos relativos.
+- Cámara fija y refresco visual a 30 Hz con interpolación continua; no usar springs sobre posiciones actualizadas por timer.
+- Al terminar, el timer deja de invalidar la pantalla detrás del panel final.
+
+### Accesibilidad
+
+- Con `Reduce Motion`, la duración no se comprime: se muestran los mismos eventos con posiciones discretas, pelota sin giro y transiciones de etapa sin spring.
+- La cancha y los 12 marcadores de jugador son decorativos para VoiceOver.
+- La banda inferior expone un único anuncio con minuto, marcador y jugada actual.
+
+### Criterios de aceptación v2
+
+- Ambos equipos completan pases y recuperan la pelota durante cada simulación.
+- Cada partido contiene al menos un remate no convertido; la batería determinística cubre afuera, atajada y bloqueo.
+- El marcador visible coincide exactamente con los goles de la timeline y el resultado final.
+- Los pateadores, portadores y receptores están espacialmente conectados con la pelota.
+- Ningún jugador sale del área jugable ni se amontona con un compañero durante una trayectoria.
+- Los reinicios no muestran jugadores corriendo detrás del arco ni saltos de pelota visibles.
