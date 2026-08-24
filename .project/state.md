@@ -16,11 +16,14 @@ ready-for-testflight
 - Implementacion completada: modo Manual/Partidos, modal de partido animado, resultados plausibles, penales y avance automatico del ganador.
 - Ajuste de realismo: la simulacion ahora usa pases entre jugadores, remates visibles al arco, pelota entrando al arco y camisetas con colores mas distinguibles.
 - Realismo narrativo v2 (2026-08-22): cada partido usa una unica timeline deterministica de saque, conduccion, pases, presion, duelos, intercepciones, quites, remates y reposiciones; la pelota y las posiciones son continuas entre eventos.
-- La cancha usa 6 jugadores por equipo, roles visuales de poseedor/receptor/defensor, reaccion del arquero y separacion corregida por aspecto durante toda la trayectoria.
+- La cancha usa 11 jugadores por equipo en formación 4-3-3, con marcadores compactos numerados; roles visuales de poseedor/receptor/defensor, reacción del arquero y separación corregida por aspecto durante toda la trayectoria.
 - Los remates distinguen gol, atajada, afuera y bloqueo; solo los goles de la timeline modifican el marcador y coinciden con el resultado final.
 - Resultado y timeline se conservan juntos en un unico `MatchSimulation` para evitar desincronizacion ante reconstrucciones SwiftUI.
 - Los reinicios nacen desde posiciones futbolisticas validas, `Reduce Motion` usa estados discretos y VoiceOver recibe un unico relato de minuto, marcador y jugada.
 - Ajuste de ritmo (2026-08-24): el partido dura 90-110 segundos, `Reduce Motion` usa 100 segundos y las tandas duran 70 segundos para que cada jugada se lea con mayor claridad.
+- Ajuste de cancha (2026-08-24): la simulación muestra 22 jugadores y hace circular el balón por toda la línea de campo; los marcadores se redujeron para sostener lectura realista en iPad.
+- Realismo táctico v3 (2026-08-24): las jugadas progresan por líneas (defensa, mediocampo, extremos y 9), la presión y los quites comienzan cerca de la pelota, los jugadores no se rearman de golpe entre beats y los desbordes terminan en centros curvos hacia el delantero. Los marcadores ahora son mini-camisetas con dorsales de mayor tamaño y el solver preserva separación visual durante toda la transición.
+- Verificación de realismo táctico v3 (2026-08-24): `MatchSimulationFactoryTests` pasa 15/15 en iPad (A16), incluyendo continuidad de timeline, pases por líneas, presiones locales, centros al 9, tiros afuera y separación de 22 jugadores durante la interpolación.
 - Nueva seccion en Mundial 2026: Fixture Mundial con zonas, carga manual de resultados, tablas, mejores terceros y llaves desde 16avos hasta final.
 - Build de simulador y suite unitaria pasan: 36 tests, 0 fallos, en iPad (A16) iOS 26.4 el 2026-08-22.
 - La simulacion de partidos ahora pondera equipos por calidad/ranking local offline: favoritos tienen mas chances de ganar, pero siguen existiendo empates, penales y sorpresas.

@@ -668,7 +668,7 @@ Este addendum incorpora al PRD el flujo de torneo que ya estaba aprobado en `sta
 
 **Contrato funcional:**
 - Partido automático de 90–110 segundos, offline y con cámara superior fija.
-- 6 jugadores por equipo: arquero, defensores, mediocampistas y atacantes.
+- 11 jugadores por equipo en formación 4-3-3: arquero, cuatro defensores, tres mediocampistas y tres atacantes.
 - Secuencias conectadas de saque, conducción, pase, presión, duelo, intercepción, quite, remate y reposición.
 - La posesión sólo cambia por una causa visible: intercepción, quite, atajada, bloqueo, pelota afuera o gol.
 - Cada partido incluye pases y recuperaciones de ambos equipos, además de remates afuera, atajados y bloqueados.

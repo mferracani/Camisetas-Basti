@@ -1173,6 +1173,12 @@ struct MatchSimulationModal: View {
             return local < 0.34
                 ? "LEVANTA LA CABEZA \(team(for: from.side).short.uppercased())"
                 : "PASE DE \(team(for: from.side).short.uppercased())"
+        case let .cross(from, _):
+            return local < 0.28
+                ? "DESBORDA \(team(for: from.side).short.uppercased())"
+                : local < 0.76
+                    ? "TIRA EL CENTRO \(team(for: from.side).short.uppercased())"
+                    : "LLEGA EL DELANTERO"
         case let .pressure(_, defender):
             return "PRESIONA \(team(for: defender.side).short.uppercased())"
         case let .duel(carrier, _, retained):
@@ -1577,7 +1583,7 @@ private struct PenaltyShootoutView: View {
                     .animation(reduceMotion ? nil : .interactiveSpring(response: 0.22, dampingFraction: 0.72), value: localProgress)
 
                 if motionProgress > 0.42 {
-                    BallTrail(from: CGPoint(x: 0.5, y: 0.72), to: ball, isShot: true)
+                    BallTrail(from: CGPoint(x: 0.5, y: 0.72), to: ball, isShot: true, isCross: false)
                         .stroke(Color(hex: "#FFC93C").opacity(0.86), style: StrokeStyle(lineWidth: 5, lineCap: .round))
                         .frame(width: geo.size.width, height: geo.size.height)
                 }
@@ -2001,7 +2007,7 @@ private struct SoccerPitchView: View {
                         let player = MatchPlayerRef(side: .home, index: index)
                         PlayerDot(
                             style: homeStyle,
-                            label: index == 0 ? "1" : home.short.prefix(1).uppercased(),
+                            label: "\(index + 1)",
                             isActive: carrier(for: play) == player,
                             isReceiver: receiver(for: play) == player,
                             isPressing: pressingPlayer(for: play) == player,
@@ -2010,13 +2016,14 @@ private struct SoccerPitchView: View {
                         .scaleEffect(carrier(for: play) == player ? 1.13 : 1)
                         .rotationEffect(.degrees(playerLean(player: player, play: play)))
                         .position(scaled(play.homePositions[index], in: geo.size))
+                        .zIndex(playerDepth(for: player, play: play))
                     }
 
                     ForEach(play.awayPositions.indices, id: \.self) { index in
                         let player = MatchPlayerRef(side: .away, index: index)
                         PlayerDot(
                             style: awayStyle,
-                            label: index == 0 ? "1" : away.short.prefix(1).uppercased(),
+                            label: "\(index + 1)",
                             isActive: carrier(for: play) == player,
                             isReceiver: receiver(for: play) == player,
                             isPressing: pressingPlayer(for: play) == player,
@@ -2025,22 +2032,30 @@ private struct SoccerPitchView: View {
                         .scaleEffect(carrier(for: play) == player ? 1.13 : 1)
                         .rotationEffect(.degrees(playerLean(player: player, play: play)))
                         .position(scaled(play.awayPositions[index], in: geo.size))
+                        .zIndex(playerDepth(for: player, play: play))
                     }
 
                     if play.showsTrail {
-                        BallTrail(from: play.ballStart, to: play.ball, isShot: play.beat.action.isShot)
+                        BallTrail(
+                            from: play.ballStart,
+                            to: play.ball,
+                            isShot: play.beat.action.isShot,
+                            isCross: play.beat.action.isCross
+                        )
                             .stroke(
-                                play.beat.action.isShot ? Color(hex: "#FFC93C").opacity(0.82) : Color.white.opacity(0.30),
+                                play.beat.action.isShot || play.beat.action.isCross
+                                    ? Color(hex: "#FFC93C").opacity(0.82)
+                                    : Color.white.opacity(0.30),
                                 style: StrokeStyle(
-                                    lineWidth: play.beat.action.isShot ? 5 : 3,
+                                    lineWidth: play.beat.action.isShot ? 5 : (play.beat.action.isCross ? 4 : 3),
                                     lineCap: .round,
-                                    dash: play.beat.action.isShot ? [] : [7, 7]
+                                    dash: play.beat.action.isShot || play.beat.action.isCross ? [] : [7, 7]
                                 )
                             )
                             .frame(width: geo.size.width, height: geo.size.height)
                     }
 
-                    FootballView(isShot: play.beat.action.isShot, spin: reduceMotion ? 0 : progress)
+                    FootballView(isShot: play.beat.action.isShot || play.beat.action.isCross, spin: reduceMotion ? 0 : progress)
                         .position(scaled(play.ball, in: geo.size))
                         .opacity(play.ballOpacity)
                         .zIndex(8)
@@ -2096,7 +2111,7 @@ private struct SoccerPitchView: View {
         let local = reduceMotion ? stepped(rawLocal) : rawLocal
         let playerProgress = smooth(local)
         let owner = beat.action.ballOwner(at: local)
-        let ball = ballPosition(for: beat, local: local)
+        let rawBall = ballPosition(for: beat, local: local)
         let homePositions = beat.playerPositions(
             for: .home,
             progress: playerProgress,
@@ -2106,6 +2121,12 @@ private struct SoccerPitchView: View {
             for: .away,
             progress: playerProgress,
             protectedIndex: owner?.side == .away ? owner?.index : nil
+        )
+        let ball = ballAtFeet(
+            rawBall,
+            owner: owner,
+            homePositions: homePositions,
+            awayPositions: awayPositions
         )
 
         return TimelineVisualPlay(
@@ -2127,9 +2148,38 @@ private struct SoccerPitchView: View {
             return restartOrigin.interpolated(to: beat.ballEnd, progress: restartProgress)
         }
 
-        return beat.ballStart.interpolated(
-            to: beat.ballEnd,
-            progress: ballTravelProgress(for: beat.action, local: local)
+        let travel = ballTravelProgress(for: beat.action, local: local)
+        if beat.action.isCross {
+            let controlX = beat.ballStart.x >= 0.5
+                ? min(0.96, max(beat.ballStart.x, beat.ballEnd.x) + 0.07)
+                : max(0.04, min(beat.ballStart.x, beat.ballEnd.x) - 0.07)
+            let control = PitchPoint(
+                x: controlX,
+                y: (beat.ballStart.y + beat.ballEnd.y) / 2
+            )
+            return quadraticBezier(
+                from: beat.ballStart,
+                control: control,
+                to: beat.ballEnd,
+                progress: travel
+            )
+        }
+
+        return beat.ballStart.interpolated(to: beat.ballEnd, progress: travel)
+    }
+
+    private func ballAtFeet(
+        _ ball: PitchPoint,
+        owner: MatchPlayerRef?,
+        homePositions: [PitchPoint],
+        awayPositions: [PitchPoint]
+    ) -> PitchPoint {
+        guard let owner else { return ball }
+        let positions = owner.side == .home ? homePositions : awayPositions
+        guard positions.indices.contains(owner.index) else { return ball }
+        return positions[owner.index].moved(
+            x: owner.side.attackDirection * 0.016,
+            y: 0.024
         )
     }
 
@@ -2137,6 +2187,10 @@ private struct SoccerPitchView: View {
         if action.isShot {
             let travel = min(1, max(0, (local - 0.26) / 0.52))
             return travel * travel
+        }
+        if action.isCross {
+            let travel = min(1, max(0, (local - 0.16) / 0.68))
+            return smooth(travel)
         }
         return smooth(local)
     }
@@ -2150,7 +2204,7 @@ private struct SoccerPitchView: View {
 
     private func shouldShowTrail(for beat: MatchBeat, local: Double, ball: PitchPoint) -> Bool {
         guard local > 0.16 && local < 0.92 else { return false }
-        if beat.action.isShot { return true }
+        if beat.action.isShot || beat.action.isCross { return true }
         return beat.action.isPass && beat.ballStart.distance(to: ball) > 0.13
     }
 
@@ -2167,7 +2221,7 @@ private struct SoccerPitchView: View {
         if let defender = play.beat.action.defender { return defender }
         if case let .shot(shooter, outcome) = play.beat.action,
            outcome == .saved || outcome == .blocked {
-            return MatchPlayerRef(side: shooter.side.opponent, index: outcome == .saved ? 0 : 2)
+            return MatchPlayerRef(side: shooter.side.opponent, index: outcome == .saved ? 0 : 3)
         }
         return nil
     }
@@ -2184,6 +2238,13 @@ private struct SoccerPitchView: View {
         return 0
     }
 
+    private func playerDepth(for player: MatchPlayerRef, play: TimelineVisualPlay) -> Double {
+        if carrier(for: play) == player { return 7 }
+        if pressingPlayer(for: play) == player { return 6 }
+        if receiver(for: play) == player { return 5 }
+        return 2
+    }
+
     private func stepped(_ value: Double) -> Double {
         if value < 0.34 { return 0 }
         if value < 0.74 { return 0.55 }
@@ -2193,6 +2254,19 @@ private struct SoccerPitchView: View {
     private func smooth(_ value: Double) -> Double {
         let t = min(1, max(0, value))
         return t * t * (3 - 2 * t)
+    }
+
+    private func quadraticBezier(
+        from start: PitchPoint,
+        control: PitchPoint,
+        to end: PitchPoint,
+        progress: Double
+    ) -> PitchPoint {
+        let inverse = 1 - progress
+        return PitchPoint(
+            x: inverse * inverse * start.x + 2 * inverse * progress * control.x + progress * progress * end.x,
+            y: inverse * inverse * start.y + 2 * inverse * progress * control.y + progress * progress * end.y
+        )
     }
 
     private func normalized(_ point: PitchPoint) -> CGPoint {
@@ -2240,41 +2314,70 @@ private struct PlayerDot: View {
     var body: some View {
         ZStack {
             if isActive {
-                Circle()
-                    .stroke(Color.white.opacity(0.72), lineWidth: 5)
-                    .frame(width: isGoalkeeper ? 42 : 48, height: isGoalkeeper ? 42 : 48)
-                    .blur(radius: 0.4)
+                MiniJerseyShape()
+                    .stroke(Color.white.opacity(0.84), lineWidth: 2.4)
+                    .frame(width: isGoalkeeper ? 31 : 30, height: isGoalkeeper ? 35 : 34)
+                    .shadow(color: Color.white.opacity(0.38), radius: 3)
             }
             if isReceiver && !isActive {
-                Circle()
+                MiniJerseyShape()
                     .stroke(
                         Color(hex: "#FFC93C").opacity(0.86),
-                        style: StrokeStyle(lineWidth: 3, dash: [5, 4])
+                        style: StrokeStyle(lineWidth: 2, dash: [4, 3])
                     )
-                    .frame(width: isGoalkeeper ? 44 : 46, height: isGoalkeeper ? 44 : 46)
+                    .frame(width: isGoalkeeper ? 31 : 30, height: isGoalkeeper ? 35 : 34)
             }
             if isPressing && !isActive {
-                Circle()
-                    .stroke(Color(hex: "#FF7B3D").opacity(0.92), lineWidth: 4)
-                    .frame(width: isGoalkeeper ? 45 : 47, height: isGoalkeeper ? 45 : 47)
+                MiniJerseyShape()
+                    .stroke(Color(hex: "#FF7B3D").opacity(0.92), lineWidth: 2.4)
+                    .frame(width: isGoalkeeper ? 31 : 30, height: isGoalkeeper ? 35 : 34)
             }
-            Circle()
+            MiniJerseyShape()
                 .fill(style.primary)
             Rectangle()
                 .fill(style.secondary)
-                .frame(width: isGoalkeeper ? 18 : 12)
-                .rotationEffect(.degrees(isGoalkeeper ? 0 : -18))
+                .frame(width: isGoalkeeper ? 11 : 9)
+                .rotationEffect(.degrees(-15))
                 .offset(x: 1)
-                .clipShape(Circle())
-            Circle()
-                .stroke(style.border, lineWidth: 3)
+                .clipShape(MiniJerseyShape())
+            Capsule()
+                .fill(style.secondary)
+                .frame(width: 9, height: 3)
+                .offset(y: -10)
+            MiniJerseyShape()
+                .stroke(style.border, lineWidth: 1.4)
             Text(label)
-                .font(.custom("Nunito-Black", size: 12))
+                .font(.system(size: isGoalkeeper ? 12.5 : 12, weight: .black, design: .rounded))
+                .monospacedDigit()
                 .foregroundColor(style.text)
-                .shadow(color: style.textShadow, radius: 1, x: 0, y: 1)
+                .shadow(color: style.textShadow, radius: 0.7, x: 0, y: 1)
+                .offset(y: 1)
         }
-        .frame(width: isGoalkeeper ? 38 : 34, height: isGoalkeeper ? 38 : 34)
-        .shadow(color: Color.black.opacity(0.22), radius: 5, x: 0, y: 3)
+        .frame(width: isGoalkeeper ? 25 : 24, height: isGoalkeeper ? 29 : 27)
+        .shadow(color: Color.black.opacity(0.26), radius: 3, x: 0, y: 2)
+    }
+}
+
+private struct MiniJerseyShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        let width = rect.width
+        let height = rect.height
+        var path = Path()
+
+        path.move(to: CGPoint(x: width * 0.27, y: height * 0.05))
+        path.addLine(to: CGPoint(x: width * 0.73, y: height * 0.05))
+        path.addLine(to: CGPoint(x: width * 0.88, y: height * 0.18))
+        path.addLine(to: CGPoint(x: width, y: height * 0.32))
+        path.addLine(to: CGPoint(x: width * 0.88, y: height * 0.50))
+        path.addLine(to: CGPoint(x: width * 0.76, y: height * 0.42))
+        path.addLine(to: CGPoint(x: width * 0.76, y: height))
+        path.addLine(to: CGPoint(x: width * 0.24, y: height))
+        path.addLine(to: CGPoint(x: width * 0.24, y: height * 0.42))
+        path.addLine(to: CGPoint(x: width * 0.12, y: height * 0.50))
+        path.addLine(to: CGPoint(x: 0, y: height * 0.32))
+        path.addLine(to: CGPoint(x: width * 0.12, y: height * 0.18))
+        path.closeSubpath()
+        return path
     }
 }
 
@@ -2293,12 +2396,21 @@ private struct BallTrail: Shape {
     let from: CGPoint
     let to: CGPoint
     let isShot: Bool
+    let isCross: Bool
 
     func path(in rect: CGRect) -> Path {
         var path = Path()
         let start = CGPoint(x: from.x * rect.width, y: from.y * rect.height)
         let end = CGPoint(x: to.x * rect.width, y: to.y * rect.height)
-        let control = CGPoint(x: (start.x + end.x) / 2, y: min(start.y, end.y) - (isShot ? 34 : 16))
+        let control: CGPoint
+        if isCross {
+            control = CGPoint(
+                x: start.x >= end.x ? min(rect.width * 0.96, max(start.x, end.x) + 34) : max(rect.width * 0.04, min(start.x, end.x) - 34),
+                y: (start.y + end.y) / 2
+            )
+        } else {
+            control = CGPoint(x: (start.x + end.x) / 2, y: min(start.y, end.y) - (isShot ? 34 : 16))
+        }
         path.move(to: start)
         path.addQuadCurve(to: end, control: control)
         return path

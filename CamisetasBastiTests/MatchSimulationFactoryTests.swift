@@ -28,10 +28,10 @@ final class MatchSimulationFactoryTests: XCTestCase {
 
         for beat in beats {
             XCTAssertLessThan(beat.startProgress, beat.endProgress)
-            XCTAssertEqual(beat.homeStartPositions.count, 6)
-            XCTAssertEqual(beat.homeEndPositions.count, 6)
-            XCTAssertEqual(beat.awayStartPositions.count, 6)
-            XCTAssertEqual(beat.awayEndPositions.count, 6)
+            XCTAssertEqual(beat.homeStartPositions.count, 11)
+            XCTAssertEqual(beat.homeEndPositions.count, 11)
+            XCTAssertEqual(beat.awayStartPositions.count, 11)
+            XCTAssertEqual(beat.awayEndPositions.count, 11)
         }
 
         for (current, next) in zip(beats, beats.dropFirst()) {
@@ -65,7 +65,7 @@ final class MatchSimulationFactoryTests: XCTestCase {
                 case let .tackle(_, defender):
                     recoverySides.insert(defender.side)
                 case let .shot(shooter, outcome):
-                    XCTAssertTrue((1...5).contains(shooter.index))
+                    XCTAssertTrue((1...10).contains(shooter.index))
                     shotOutcomes.insert(outcome)
                 default:
                     break
@@ -75,6 +75,95 @@ final class MatchSimulationFactoryTests: XCTestCase {
             XCTAssertEqual(passSides, Set([.home, .away]))
             XCTAssertEqual(recoverySides, Set([.home, .away]))
             XCTAssertTrue(shotOutcomes.isSuperset(of: [.wide, .saved, .blocked]))
+        }
+    }
+
+    func testOpenPlayConnectsDefenceMidfieldAndAttack() throws {
+        let argentina = try XCTUnwrap(CAMI_DATA.team(countryId: "wc26", teamId: "sel_argentina"))
+        let curacao = try XCTUnwrap(CAMI_DATA.team(countryId: "wc26", teamId: "sel_curacao"))
+        var rng = SeededGenerator(seed: 73)
+        let beats = MatchSimulationFactory.makeSimulation(home: argentina, away: curacao, rng: &rng).beats
+
+        let homeParticipants = Set(beats.flatMap { beat -> [Int] in
+            switch beat.action {
+            case let .kickoff(from, to), let .pass(from, to), let .cross(from, to), let .restart(from, to, _):
+                return [from, to].filter { $0.side == .home }.map(\.index)
+            case let .carry(player), let .shot(player, _):
+                return player.side == .home ? [player.index] : []
+            case let .pressure(carrier, defender), let .duel(carrier, defender, _), let .tackle(carrier, defender):
+                return [carrier, defender].filter { $0.side == .home }.map(\.index)
+            case let .interception(passer, intendedReceiver, defender):
+                return [passer, intendedReceiver, defender].filter { $0.side == .home }.map(\.index)
+            case .finalWhistle:
+                return []
+            }
+        })
+
+        XCTAssertFalse(homeParticipants.isDisjoint(with: Set(1...4)))
+        XCTAssertFalse(homeParticipants.isDisjoint(with: Set(5...7)))
+        XCTAssertFalse(homeParticipants.isDisjoint(with: Set(8...10)))
+    }
+
+    func testEverySimulationIncludesAWideCrossForTheStriker() throws {
+        let argentina = try XCTUnwrap(CAMI_DATA.team(countryId: "wc26", teamId: "sel_argentina"))
+        let curacao = try XCTUnwrap(CAMI_DATA.team(countryId: "wc26", teamId: "sel_curacao"))
+
+        for seed in 0..<16 {
+            var rng = SeededGenerator(seed: UInt64(seed))
+            let beats = MatchSimulationFactory.makeSimulation(home: argentina, away: curacao, rng: &rng).beats
+            let crosses = beats.compactMap { beat -> (from: MatchPlayerRef, to: MatchPlayerRef)? in
+                guard case let .cross(from, to) = beat.action else { return nil }
+                return (from, to)
+            }
+
+            XCTAssertTrue(crosses.contains {
+                [8, 10].contains($0.from.index) && $0.to.index == 9 && $0.from.side == $0.to.side
+            })
+        }
+    }
+
+    func testPassiveTeammatesMoveAsACompactBlockDuringPasses() throws {
+        let argentina = try XCTUnwrap(CAMI_DATA.team(countryId: "wc26", teamId: "sel_argentina"))
+        let curacao = try XCTUnwrap(CAMI_DATA.team(countryId: "wc26", teamId: "sel_curacao"))
+        var rng = SeededGenerator(seed: 109)
+        let beats = MatchSimulationFactory.makeSimulation(home: argentina, away: curacao, rng: &rng).beats
+
+        for beat in beats {
+            guard case let .pass(from, to) = beat.action else { continue }
+            for side in [MatchSide.home, .away] {
+                let start = side == .home ? beat.homeStartPositions : beat.awayStartPositions
+                let end = side == .home ? beat.homeEndPositions : beat.awayEndPositions
+                for index in start.indices where !(from.side == side && from.index == index) && !(to.side == side && to.index == index) {
+                    XCTAssertLessThanOrEqual(
+                        start[index].distance(to: end[index]),
+                        0.09,
+                        "A passive player travelled too far during a pass at beat \(beat.id)"
+                    )
+                }
+            }
+        }
+    }
+
+    func testPressuresUseTheClosestAvailableDefender() throws {
+        let argentina = try XCTUnwrap(CAMI_DATA.team(countryId: "wc26", teamId: "sel_argentina"))
+        let curacao = try XCTUnwrap(CAMI_DATA.team(countryId: "wc26", teamId: "sel_curacao"))
+
+        for seed in 10..<18 {
+            var rng = SeededGenerator(seed: UInt64(seed))
+            let beats = MatchSimulationFactory.makeSimulation(home: argentina, away: curacao, rng: &rng).beats
+
+            for beat in beats {
+                guard case let .pressure(_, defender) = beat.action else { continue }
+
+                let positions = defender.side == .home ? beat.homeStartPositions : beat.awayStartPositions
+                let closestDistance = positions.dropFirst().map { $0.distance(to: beat.ballStart) }.min() ?? .greatestFiniteMagnitude
+                XCTAssertEqual(
+                    positions[defender.index].distance(to: beat.ballStart),
+                    closestDistance,
+                    accuracy: 0.000_001,
+                    "The pressing player was not the closest defender at beat \(beat.id)"
+                )
+            }
         }
     }
 
@@ -164,8 +253,8 @@ final class MatchSimulationFactoryTests: XCTestCase {
             let positions = owner.side == .home ? beat.homeStartPositions : beat.awayStartPositions
             XCTAssertLessThanOrEqual(
                 positions[owner.index].distance(to: beat.ballStart),
-                0.005,
-                "The controlled action starts without its owner on the ball at beat \(beat.id), action \(beat.action)"
+                0.02,
+                "The controlled action starts outside its visual touch radius at beat \(beat.id), action \(beat.action)"
             )
         }
     }

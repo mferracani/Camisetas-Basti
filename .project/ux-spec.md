@@ -92,14 +92,14 @@ El tiempo puede ser ficticio:
 Vista superior, simple y legible:
 - pasto verde con lineas blancas;
 - area grande, circulo central, arcos;
-- jugadores como circulos o pins;
+- jugadores como mini-camisetas compactas;
 - pelota visible con contraste;
 - equipos diferenciados por color.
 
 No buscar realismo 3D. El objetivo es comprension inmediata.
 
 ### Jugadores
-- 5 o 6 jugadores por equipo para que no se sature en iPad 10.
+- 11 jugadores por equipo en mini-camisetas compactas, con dorsal grande y contrastado; sólo poseedor, receptor y jugador que presiona reciben un énfasis de silueta.
 - Local usa color primario de camiseta/equipo.
 - Visitante usa color contrastante.
 - Si los colores se parecen, usar borde blanco/oscuro o short secundario para distinguir.
@@ -237,6 +237,8 @@ La simulación usa una timeline de microjugadas conectadas. Cada evento empieza 
 
 `POSESIÓN → PASE / CONDUCCIÓN → PRESIÓN → DUELO / INTERCEPCIÓN → REMATE → REPOSICIÓN`
 
+En ataques por afuera, la secuencia puede ser `DEFENSA → MEDIOCAMPO → EXTREMO → DESBORDE → CENTRO → LLEGADA DEL 9`. El bloque acompaña de forma gradual: no se reposiciona completo de un evento al siguiente.
+
 No se busca física profesional. El realismo surge de que cada cambio tiene causa, continuidad y una consecuencia visible.
 
 ### Estados aprobados
@@ -244,6 +246,7 @@ No se busca física profesional. El realismo surge de que cada cambio tiene caus
 - `kickoff`: saque inicial con pateador sobre la pelota.
 - `carry`: conducción corta con la pelota controlada.
 - `pass`: la pelota sale del pasador, queda libre durante el viaje y llega al receptor.
+- `cross`: el extremo desborda y envía un centro curvo al delantero que llega al área.
 - `pressure`: un defensor sale al cruce y el resto conserva la forma.
 - `duel`: atacante y defensor disputan próximos; el resultado es legible.
 - `interception`: el defensor corta la trayectoria antes del receptor.
@@ -254,11 +257,11 @@ No se busca física profesional. El realismo surge de que cada cambio tiene caus
 
 ### Claridad visual
 
-- 6 jugadores por equipo para conservar roles sin saturar iPad 10.
+- 11 jugadores por equipo en una formación 4-3-3 compacta, representados como camisetas con números 1-11 de lectura inmediata, sin saturar el iPad 10.
 - Aro blanco sólido para quien controla la pelota.
 - Aro amarillo punteado para el próximo receptor.
 - Aro naranja para el defensor que presiona.
-- Trail sólo durante pases largos y remates.
+- Trail sólo durante pases largos, centros y remates.
 - La pelota permanece por encima de los jugadores y nunca cambia de dueño durante el vuelo.
 - El feedback `AFUERA` se mantiene dentro del área visible aunque la pelota termine junto al borde.
 - La formación mantiene una separación mínima corregida por la relación 1.72:1 de la cancha, también durante la interpolación y no sólo al final de cada jugada.
@@ -275,7 +278,7 @@ No se busca física profesional. El realismo surge de que cada cambio tiene caus
 ### Accesibilidad
 
 - Con `Reduce Motion`, la duración no se comprime: se muestran los mismos eventos con posiciones discretas, pelota sin giro y transiciones de etapa sin spring.
-- La cancha y los 12 marcadores de jugador son decorativos para VoiceOver.
+- La cancha y los 22 marcadores de jugador son decorativos para VoiceOver.
 - La banda inferior expone un único anuncio con minuto, marcador y jugada actual.
 
 ### Criterios de aceptación v2
