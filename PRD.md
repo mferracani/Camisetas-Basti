@@ -667,7 +667,7 @@ Este addendum incorpora al PRD el flujo de torneo que ya estaba aprobado en `sta
 **Objetivo:** que un partido automático se entienda como una secuencia futbolística continua y no como movimientos aleatorios de pelota y jugadores.
 
 **Contrato funcional:**
-- Partido automático de 35–50 segundos, offline y con cámara superior fija.
+- Partido automático de 90–110 segundos, offline y con cámara superior fija.
 - 6 jugadores por equipo: arquero, defensores, mediocampistas y atacantes.
 - Secuencias conectadas de saque, conducción, pase, presión, duelo, intercepción, quite, remate y reposición.
 - La posesión sólo cambia por una causa visible: intercepción, quite, atajada, bloqueo, pelota afuera o gol.

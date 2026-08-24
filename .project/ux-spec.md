@@ -85,7 +85,7 @@ Formato sugerido:
 
 El tiempo puede ser ficticio:
 - inicia en `0'`;
-- avanza hasta `90'` durante los 35-50 segundos reales;
+- avanza hasta `90'` durante los 90-110 segundos reales;
 - si hay goles, el marcador cambia en el momento del evento.
 
 ### Cancha
@@ -265,7 +265,7 @@ No se busca física profesional. El realismo surge de que cada cambio tiene caus
 
 ### Ritmo y motion
 
-- Partido completo: 35–50 segundos.
+- Partido completo: 90–110 segundos.
 - Pases y conducciones: aproximadamente 0,55–1,10 segundos relativos.
 - Presiones, duelos e intercepciones: aproximadamente 0,45–0,85 segundos relativos.
 - Remate y resolución: aproximadamente 0,90–1,35 segundos relativos.

@@ -946,7 +946,7 @@ struct MatchSimulationModal: View {
         } else {
             _penaltyShootout = State(initialValue: nil)
         }
-        _duration = State(initialValue: 42)
+        _duration = State(initialValue: 100)
     }
 
     var body: some View {
@@ -1005,7 +1005,7 @@ struct MatchSimulationModal: View {
             }
         }
         .onAppear {
-            duration = reduceMotion ? 42 : Double.random(in: 35...50)
+            duration = reduceMotion ? 100 : Double.random(in: 90...110)
             lastTickDate = Date()
         }
         .onReceive(timer) { tickDate in
@@ -1071,7 +1071,7 @@ struct MatchSimulationModal: View {
     }
 
     private var penaltyDuration: TimeInterval {
-        36
+        70
     }
 
     private var penaltyShotDuration: TimeInterval {

@@ -11,7 +11,7 @@ ready-for-testflight
 ## Decisiones tomadas
 - La seccion torneos tendra dos modalidades: avance manual actual y nueva simulacion automatica por partido.
 - La simulacion debe funcionar offline y estar optimizada para iPad 10 y 12/13 pulgadas en horizontal.
-- Cada partido simulado durara entre 35 y 50 segundos con resultados plausibles y aleatorios.
+- Cada partido simulado durara entre 90 y 110 segundos con resultados plausibles y aleatorios.
 - UX define un control segmentado Manual/Partidos y modal full-screen de partido con marcador, cancha, eventos y cierre final.
 - Implementacion completada: modo Manual/Partidos, modal de partido animado, resultados plausibles, penales y avance automatico del ganador.
 - Ajuste de realismo: la simulacion ahora usa pases entre jugadores, remates visibles al arco, pelota entrando al arco y camisetas con colores mas distinguibles.
@@ -20,7 +20,7 @@ ready-for-testflight
 - Los remates distinguen gol, atajada, afuera y bloqueo; solo los goles de la timeline modifican el marcador y coinciden con el resultado final.
 - Resultado y timeline se conservan juntos en un unico `MatchSimulation` para evitar desincronizacion ante reconstrucciones SwiftUI.
 - Los reinicios nacen desde posiciones futbolisticas validas, `Reduce Motion` usa estados discretos y VoiceOver recibe un unico relato de minuto, marcador y jugada.
-- Ajuste de ritmo (2026-08-22): el partido dura 35-50 segundos, `Reduce Motion` usa 42 segundos y las tandas duran 36 segundos para que cada jugada se lea con mayor claridad.
+- Ajuste de ritmo (2026-08-24): el partido dura 90-110 segundos, `Reduce Motion` usa 100 segundos y las tandas duran 70 segundos para que cada jugada se lea con mayor claridad.
 - Nueva seccion en Mundial 2026: Fixture Mundial con zonas, carga manual de resultados, tablas, mejores terceros y llaves desde 16avos hasta final.
 - Build de simulador y suite unitaria pasan: 36 tests, 0 fallos, en iPad (A16) iOS 26.4 el 2026-08-22.
 - La simulacion de partidos ahora pondera equipos por calidad/ranking local offline: favoritos tienen mas chances de ganar, pero siguen existiendo empates, penales y sorpresas.
