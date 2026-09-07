@@ -1,5 +1,16 @@
 # QA Checklist — Camisetas Basti
 
+## Incremento juego colectivo — 2026-09-07
+
+- [x] 81 unitarios sin fallos: paredes con devolución adelantada, pases en movimiento, líneas de intercepción, contraataques con apoyos, variedad y duelos ganados/perdidos; regresiones de kits, marcador, pelota parada y persistencia.
+- [x] Velocidad de posiciones realmente dibujadas en 27 partidos y continuidad del caché en doce semillas; límites originales conservados, sin relajar tests.
+- [x] Seis XCUITests sin fallos: relatos tácticos, gol normal/Reduce Motion, pausa/reanudación, tiros libres/penales, tanda/cierre y partido completo con resultado persistido en fixture.
+- [x] Build Release para iOS Simulator correcto; harness táctico de QA ausente del ejecutable Release.
+- [x] Video normal de la app real en iPad Pro 13 (M5) Simulator: `build/match-dynamic-play/partido-dinamico-2026-09-07.mp4`.
+- [ ] Revisión perceptual con Mati/Basti y GPU/temperatura en iPad físico.
+
+Evidencia final: `/private/tmp/camisetas-dynamic-final.xcresult` (81 + 6), `/private/tmp/camisetas-dynamic-release.log`; detalle en `match-dynamic-play-2026-09-07.md`. Sin commit, push, merge ni nueva carga a TestFlight en este incremento.
+
 ## Distribución TestFlight build 16 — 2026-09-07
 
 - [x] `main` limpio, sincronizado en `9d780a3`; preflight oficial de Mundial correcto.

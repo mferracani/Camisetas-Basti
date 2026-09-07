@@ -1,5 +1,9 @@
 # Security Review — Camisetas Basti
 
+## Revisión incremental: juego colectivo — 2026-09-07
+
+Revisión estática de generador táctico, planificación de cruces y relato del modal. El incremento no agrega red, URLs, analytics, identificadores, permisos, dependencias ni escritura en UserDefaults. `MatchPlayPattern` y las posiciones son datos efímeros del partido. Los nuevos puntos de entrada de QA quedan dentro del harness `#if DEBUG`; capturas/videos son artefactos locales, fuera del bundle. Sin hallazgos bloqueantes en este diff. Esta revisión técnica no certifica cumplimiento legal ni autoriza una publicación.
+
 ## Revisión incremental: motion natural — 2026-09-07
 
 Revisión estática acotada a curvas/poses, renderer Canvas, reloj visual y tanda final. No incorpora red, URLs, analytics, logs de usuario, permisos, persistencia ni paquetes. El nuevo modelo importa únicamente Foundation. Los videos de QA son artefactos locales de desarrollo y no se incorporan al bundle. Sin hallazgos bloqueantes en este diff; no constituye certificación legal ni aprobación de publicación.

@@ -19,6 +19,7 @@ struct MatchBeat: Equatable, Identifiable {
     let awayStartPositions: [PitchPoint]
     let awayEndPositions: [PitchPoint]
     var setPiece: MatchSetPiece? = nil
+    var playPattern: MatchPlayPattern? = nil
 
     func localProgress(at matchProgress: Double) -> Double {
         guard endProgress > startProgress else { return 1 }
@@ -164,6 +165,11 @@ enum MatchShotOutcome: Equatable, Hashable {
 enum MatchSetPiece: Equatable, Hashable {
     case freeKick
     case penalty
+}
+
+/// Intent shared by a short sequence; positions, not this label, realize the play.
+enum MatchPlayPattern: CaseIterable {
+    case oneTwo, throughBall, switchPlay, wideCross, dribble, counterattack
 }
 
 enum MatchRestartReason: Equatable {
@@ -336,6 +342,8 @@ private struct MatchTimelineBuilder<R: RandomNumberGenerator> {
     private var drafts: [DraftBeat] = []
     private var passIndex = 0
     private var recoveryIndex = 0
+    private var playPattern: MatchPlayPattern? = nil
+    private var patterns: [MatchPlayPattern] = []
 
     init(result: MatchSimulationResult, rng: R) {
         self.result = result
@@ -345,11 +353,13 @@ private struct MatchTimelineBuilder<R: RandomNumberGenerator> {
     mutating func build() -> [MatchBeat] {
         addKickoff(side: .home)
 
-        // Introduce both teams briefly, leaving time for chances and their reactions.
-        addPassSequence(side: .home, count: 3, destination: nil)
+        // Establish play, lose it under pressure, then break in the other direction.
+        // These failed attacks are playable sequences, not a lead-in to every shot.
+        addPassSequence(side: .home, count: 2, destination: nil)
         addRecovery(winner: .away, kind: .interception)
-        addPassSequence(side: .away, count: 3, destination: nil)
         addRecovery(winner: .home, kind: .tackle)
+        patterns = [.oneTwo, .wideCross].shuffled(using: &rng)
+            + [.throughBall, .switchPlay, .dribble].shuffled(using: &rng)
 
         for (index, shot) in shotPlans().enumerated() {
             if possession != shot.side {
@@ -373,6 +383,7 @@ private struct MatchTimelineBuilder<R: RandomNumberGenerator> {
         }
 
         // A final short exchange prevents the animation from ending on a frozen restart.
+        playPattern = nil
         addPassSequence(side: possession, count: 2, destination: nil)
         addFinalWhistle()
         return normalizedBeats()
@@ -478,10 +489,10 @@ private struct MatchTimelineBuilder<R: RandomNumberGenerator> {
         }
     }
 
-    private mutating func addCarry(side: MatchSide) {
+    private mutating func addCarry(side: MatchSide, distance: Double = 0.085) {
         let direction = side.attackDirection
         let laneNudge = (carrier.index + passIndex).isMultiple(of: 2) ? 0.035 : -0.035
-        let end = ball.moved(x: direction * 0.055, y: laneNudge)
+        let end = ball.moved(x: direction * distance, y: laneNudge)
         addBeat(
             action: .carry(player: carrier),
             weight: 0.66,
@@ -495,40 +506,78 @@ private struct MatchTimelineBuilder<R: RandomNumberGenerator> {
         sequenceIndex: Int,
         shot: ShotPlan
     ) -> MatchPlayerRef {
-        if sequenceIndex % 3 == 1 {
+        if patterns.isEmpty {
+            patterns = [.oneTwo, .throughBall, .switchPlay, .wideCross, .dribble].shuffled(using: &rng)
+        }
+        let pattern = patterns.removeFirst()
+        playPattern = pattern
+        switch pattern {
+        case .wideCross:
             return addWideCrossAttack(for: side, sequenceIndex: sequenceIndex, shot: shot)
+        case .oneTwo:
+            addGiveAndGo(side: side)
+        case .throughBall:
+            let receiver = attackingOutlet(on: side, toward: ball.moved(x: side.attackDirection * 0.22))
+            let run = position(of: receiver).moved(x: side.attackDirection * 0.09,
+                                                  y: ball.y < 0.5 ? 0.045 : -0.045)
+            pass(to: receiver, at: run, weight: 0.95)
+            addCarry(side: side, distance: 0.08)
+        case .switchPlay:
+            // Escape the crowded flank, then attack diagonally into the box.
+            let receiver = MatchPlayerRef(side: side, index: ball.y < 0.5 ? 10 : 8)
+            if receiver != carrier {
+                let run = position(of: receiver).moved(x: side.attackDirection * 0.055)
+                pass(to: receiver, at: run, weight: 1.15)
+            }
+            addCarry(side: side, distance: 0.10)
+        case .dribble:
+            addCarry(side: side, distance: 0.10)
+            let defender = nearestOutfieldPlayer(on: side.opponent, to: ball)
+            addBeat(action: .pressure(carrier: carrier, defender: defender), weight: 0.55,
+                    ballEnd: ball.moved(x: side.attackDirection * 0.012), possessionAfter: side)
+            // A successful take-on has a lateral escape around the pressing player.
+            addBeat(action: .duel(carrier: carrier, defender: defender, retained: true), weight: 0.80,
+                    ballEnd: ball.moved(x: side.attackDirection * 0.07, y: ball.y < 0.5 ? -0.05 : 0.05),
+                    possessionAfter: side)
+        case .counterattack:
+            addCounterattack(side: side)
         }
 
-        let lane = [0.34, 0.66, 0.43, 0.57][sequenceIndex % 4]
-        let origin = PitchPoint(x: side == .home ? 0.79 : 0.21, y: lane)
-        addPassSequence(side: side, count: 2 + (sequenceIndex % 2), destination: origin)
-
-        let defender = nearestOutfieldPlayer(on: side.opponent, to: ball)
-        let pressureEnd = ball.moved(x: side.attackDirection * 0.018)
-        addBeat(
-            action: .pressure(carrier: carrier, defender: defender),
-            weight: 0.52,
-            ballEnd: pressureEnd,
-            possessionAfter: side
-        )
-
-        if sequenceIndex.isMultiple(of: 2) {
-            let duelEnd = pressureEnd.moved(
-                x: side.attackDirection * 0.032,
-                y: sequenceIndex.isMultiple(of: 4) ? 0.018 : -0.018
-            )
-            addBeat(
-                action: .duel(carrier: carrier, defender: defender, retained: true),
-                weight: 0.62,
-                ballEnd: duelEnd,
-                possessionAfter: side
-            )
+        if carrier.index < 5 || attackingDepth(ball, side: side) < 0.57 {
+            let outlet = attackingOutlet(on: side, toward: shotOrigin(for: shot))
+            pass(to: outlet, at: receivingPoint(for: outlet, toward: shotOrigin(for: shot)), weight: 0.85)
         }
+        return carrier
+    }
 
-        if carrier.index >= 8 { return carrier }
-        let positions = side == .home ? homePositions : awayPositions
-        let index = (8...10).min { positions[$0].distance(to: ball) < positions[$1].distance(to: ball) } ?? 9
-        return MatchPlayerRef(side: side, index: index)
+    private mutating func addGiveAndGo(side: MatchSide) {
+        let runner = carrier
+        let origin = ball
+        let partner = attackingOutlet(on: side, toward: ball.moved(x: side.attackDirection * 0.11,
+                                                                  y: ball.y < 0.5 ? 0.13 : -0.13))
+        let firstRun = origin.moved(x: side.attackDirection * 0.055, y: origin.y < 0.5 ? -0.028 : 0.028)
+        let target = receivingPoint(for: partner, toward: origin.moved(x: side.attackDirection * 0.12))
+        addBeat(action: .pass(from: runner, to: partner), weight: 0.80, ballEnd: target,
+                possessionAfter: side, runs: [(runner, firstRun)])
+        carrier = partner
+        let returnPoint = firstRun.moved(x: side.attackDirection * 0.06, y: origin.y < 0.5 ? 0.04 : -0.04)
+        pass(to: runner, at: returnPoint, weight: 0.80)
+    }
+
+    private mutating func pass(to receiver: MatchPlayerRef, at point: PitchPoint, weight: Double) {
+        guard receiver != carrier else { return }
+        addBeat(action: .pass(from: carrier, to: receiver), weight: weight,
+                ballEnd: point, possessionAfter: receiver.side)
+        carrier = receiver
+        passIndex += 1
+    }
+
+    private mutating func addCounterattack(side: MatchSide) {
+        playPattern = .counterattack
+        addCarry(side: side, distance: 0.10)
+        let receiver = attackingOutlet(on: side, toward: ball.moved(x: side.attackDirection * 0.20))
+        let target = position(of: receiver).moved(x: side.attackDirection * 0.065)
+        pass(to: receiver, at: target, weight: 0.90)
     }
 
     private mutating func addWideCrossAttack(
@@ -539,10 +588,9 @@ private struct MatchTimelineBuilder<R: RandomNumberGenerator> {
         let winger = MatchPlayerRef(side: side, index: sequenceIndex.isMultiple(of: 2) ? 8 : 10)
         let striker = MatchPlayerRef(side: side, index: 9)
         let wingY = winger.index == 8 ? 0.20 : 0.80
-        let wideReceivingPoint = PitchPoint(x: side == .home ? 0.72 : 0.28, y: wingY)
-        let bylinePoint = PitchPoint(x: side == .home ? 0.88 : 0.12, y: winger.index == 8 ? 0.17 : 0.83)
+        let wideReceivingPoint = receivingPoint(for: winger, toward: PitchPoint(
+            x: side == .home ? 0.80 : 0.20, y: wingY))
 
-        addPassSequence(side: side, count: 2, destination: wideReceivingPoint)
         if carrier != winger {
             addBeat(
                 action: .pass(from: carrier, to: winger),
@@ -552,6 +600,8 @@ private struct MatchTimelineBuilder<R: RandomNumberGenerator> {
             )
             carrier = winger
         }
+        let bylinePoint = ball.moved(x: side.attackDirection * 0.11,
+                                     y: winger.index == 8 ? -0.055 : 0.055)
 
         addBeat(
             action: .carry(player: winger),
@@ -560,7 +610,7 @@ private struct MatchTimelineBuilder<R: RandomNumberGenerator> {
             possessionAfter: side
         )
 
-        let arrival = shotOrigin(for: shot)
+        let arrival = receivingPoint(for: striker, toward: shotOrigin(for: shot), lead: 0.09)
         addBeat(
             action: .cross(from: winger, to: striker),
             weight: 1.14,
@@ -569,19 +619,12 @@ private struct MatchTimelineBuilder<R: RandomNumberGenerator> {
         )
         carrier = striker
 
-        let defender = nearestOutfieldPlayer(on: side.opponent, to: arrival)
-        addBeat(
-            action: .duel(carrier: striker, defender: defender, retained: true),
-            weight: 0.48,
-            ballEnd: arrival,
-            possessionAfter: side
-        )
-
         return striker
     }
 
     private mutating func addRecovery(winner: MatchSide, kind: RecoveryKind) {
         guard possession != winner else { return }
+        playPattern = nil
         let loser = possession
         let oldCarrier = carrier
         let defender = nearestOutfieldPlayer(on: winner, to: ball)
@@ -596,27 +639,36 @@ private struct MatchTimelineBuilder<R: RandomNumberGenerator> {
             possessionAfter: loser
         )
 
-        let end = pressureEnd.moved(
+        var end = pressureEnd.moved(
             x: winner.attackDirection * 0.045,
             y: recoveryIndex.isMultiple(of: 2) ? 0.028 : -0.028
         )
         let action: MatchAction
+        var recoveringPlayer = defender
+        var runs: [(MatchPlayerRef, PitchPoint)] = []
         switch kind {
         case .interception:
-            let intended = MatchPlayerRef(side: loser, index: nextPassingTarget(after: oldCarrier.index, step: recoveryIndex))
-            action = .interception(passer: oldCarrier, intendedReceiver: intended, defender: defender)
+            let lane = interceptedLane(passer: oldCarrier, defendingSide: winner)
+            end = lane.cut
+            recoveringPlayer = lane.defender
+            runs = [(lane.receiver, lane.target)]
+            action = .interception(passer: oldCarrier, intendedReceiver: lane.receiver, defender: lane.defender)
         case .tackle:
+            addBeat(action: .duel(carrier: oldCarrier, defender: defender, retained: false),
+                    weight: 0.48, ballEnd: pressureEnd, possessionAfter: loser)
             action = .tackle(carrier: oldCarrier, defender: defender)
         }
         addBeat(
             action: action,
             weight: 0.68,
             ballEnd: end,
-            possessionAfter: winner
+            possessionAfter: winner,
+            runs: runs
         )
         possession = winner
-        carrier = defender
+        carrier = recoveringPlayer
         recoveryIndex += 1
+        addCounterattack(side: winner)
     }
 
     private mutating func addSetPieceAttack(
@@ -624,6 +676,7 @@ private struct MatchTimelineBuilder<R: RandomNumberGenerator> {
         kind: MatchSetPiece,
         sequenceIndex: Int
     ) -> MatchPlayerRef {
+        playPattern = nil
         let taker = MatchPlayerRef(side: side, index: 9)
         let attackX = kind == .penalty ? 0.89 : 0.69
         let spot = PitchPoint(
@@ -674,6 +727,7 @@ private struct MatchTimelineBuilder<R: RandomNumberGenerator> {
     }
 
     private mutating func addRestart(after shot: ShotPlan) {
+        playPattern = nil
         let side = shot.side.opponent
         let from: MatchPlayerRef
         let to: MatchPlayerRef
@@ -730,7 +784,8 @@ private struct MatchTimelineBuilder<R: RandomNumberGenerator> {
         weight: Double,
         ballEnd: PitchPoint,
         possessionAfter: MatchSide,
-        setPiece: MatchSetPiece? = nil
+        setPiece: MatchSetPiece? = nil,
+        runs: [(MatchPlayerRef, PitchPoint)] = []
     ) {
         let ballEnd = action.endingBallOwner != nil && !action.isShot
             ? PitchPoint(x: min(0.96, max(0.04, ballEnd.x)), y: min(0.84, max(0.16, ballEnd.y))) : ballEnd
@@ -740,13 +795,19 @@ private struct MatchTimelineBuilder<R: RandomNumberGenerator> {
             from: homePositions,
             for: .home,
             possession: possessionAfter,
-            ball: ballEnd
+            ball: ballEnd,
+            opponents: awayPositions,
+            action: action,
+            pattern: playPattern
         )
         var endAway = MatchFormation.advancedPositions(
             from: awayPositions,
             for: .away,
             possession: possessionAfter,
-            ball: ballEnd
+            ball: ballEnd,
+            opponents: homePositions,
+            action: action,
+            pattern: playPattern
         )
         if case let .setPieceSetup(taker, kind) = action {
             endHome = setPiecePositions(for: .home, taker: taker, kind: kind, spot: ballEnd)
@@ -765,6 +826,9 @@ private struct MatchTimelineBuilder<R: RandomNumberGenerator> {
             home: &endHome,
             away: &endAway
         )
+        for (runner, point) in runs {
+            setPosition(runner, point: point, home: &endHome, away: &endAway)
+        }
         let endingOwner = action.endingBallOwner
         endHome = MatchPitchLayout.resolvedPositions(
             endHome,
@@ -787,7 +851,8 @@ private struct MatchTimelineBuilder<R: RandomNumberGenerator> {
                 homeEndPositions: endHome,
                 awayStartPositions: startAway,
                 awayEndPositions: endAway,
-                setPiece: setPiece
+                setPiece: setPiece,
+                playPattern: playPattern
             )
         )
         ball = ballEnd
@@ -804,8 +869,11 @@ private struct MatchTimelineBuilder<R: RandomNumberGenerator> {
         away: inout [PitchPoint]
     ) {
         switch action {
-        case let .kickoff(from, to), let .pass(from, to), let .cross(from, to):
+        case let .kickoff(from, to):
             setPosition(from, point: ballStart, home: &home, away: &away)
+            setPosition(to, point: ballEnd, home: &home, away: &away)
+        case let .pass(_, to), let .cross(_, to):
+            // The passer keeps their support run after contact instead of freezing.
             setPosition(to, point: ballEnd, home: &home, away: &away)
         case let .carry(player):
             setPosition(player, point: ballEnd, home: &home, away: &away)
@@ -813,7 +881,7 @@ private struct MatchTimelineBuilder<R: RandomNumberGenerator> {
             setPosition(carrier, point: ballEnd, home: &home, away: &away)
             setPosition(
                 defender,
-                point: ballEnd.moved(x: -carrier.side.attackDirection * 0.034, y: 0.026),
+                point: ballEnd.moved(x: carrier.side.attackDirection * 0.034, y: 0.026),
                 home: &home,
                 away: &away
             )
@@ -821,7 +889,7 @@ private struct MatchTimelineBuilder<R: RandomNumberGenerator> {
             setPosition(carrier, point: ballEnd, home: &home, away: &away)
             setPosition(
                 defender,
-                point: ballEnd.moved(x: -carrier.side.attackDirection * 0.020, y: 0.020),
+                point: ballEnd.moved(x: carrier.side.attackDirection * 0.020, y: 0.020),
                 home: &home,
                 away: &away
             )
@@ -952,10 +1020,74 @@ private struct MatchTimelineBuilder<R: RandomNumberGenerator> {
         return receivingPoint(for: receiver, toward: tacticalTarget)
     }
 
-    private func receivingPoint(for receiver: MatchPlayerRef, toward target: PitchPoint) -> PitchPoint {
+    private func receivingPoint(for receiver: MatchPlayerRef, toward target: PitchPoint, lead: Double = 0.055) -> PitchPoint {
         let current = (receiver.side == .home ? homePositions : awayPositions)[receiver.index]
         let distance = MatchPitchLayout.visualDistance(current, target)
-        return current.interpolated(to: target, progress: min(1, 0.025 / max(0.00001, distance)))
+        return current.interpolated(to: target, progress: min(1, lead / max(0.00001, distance)))
+    }
+
+    private func position(of player: MatchPlayerRef) -> PitchPoint {
+        (player.side == .home ? homePositions : awayPositions)[player.index]
+    }
+
+    private func attackingDepth(_ point: PitchPoint, side: MatchSide) -> Double {
+        side == .home ? point.x : 1 - point.x
+    }
+
+    private func attackingOutlet(on side: MatchSide, toward target: PitchPoint) -> MatchPlayerRef {
+        let candidates = (1..<11).filter { $0 != carrier.index }
+        let opponents = side == .home ? awayPositions : homePositions
+        let index = candidates.max { first, second in
+            func score(_ index: Int) -> Double {
+                let point = position(of: MatchPlayerRef(side: side, index: index))
+                let space = opponents.dropFirst().map { MatchPitchLayout.visualDistance($0, point) }.min() ?? 0
+                let advancement = (point.x - ball.x) * side.attackDirection
+                let lane = opponents.dropFirst().map { distanceToSegment($0, from: ball, to: point) }.min() ?? 0
+                return -MatchPitchLayout.visualDistance(point, target) * 1.5
+                    + min(0.15, space) * 1.4 + min(0.08, lane)
+                    + min(0.20, advancement) * 0.5
+                    - (advancement < -0.04 ? 0.25 : 0)
+            }
+            return score(first) < score(second)
+        } ?? (carrier.index == 6 ? 7 : 6)
+        return MatchPlayerRef(side: side, index: index)
+    }
+
+    private func distanceToSegment(_ point: PitchPoint, from: PitchPoint, to: PitchPoint) -> Double {
+        let dx = to.x - from.x, dy = (to.y - from.y) / MatchPitchLayout.aspectRatio
+        let t = min(0.92, max(0.08, ((point.x - from.x) * dx
+            + (point.y - from.y) / MatchPitchLayout.aspectRatio * dy) / max(0.00001, dx * dx + dy * dy)))
+        return MatchPitchLayout.visualDistance(point, from.interpolated(to: to, progress: t))
+    }
+
+    private func interceptedLane(passer: MatchPlayerRef, defendingSide: MatchSide)
+        -> (receiver: MatchPlayerRef, target: PitchPoint, defender: MatchPlayerRef, cut: PitchPoint) {
+        let defenders = defendingSide == .home ? homePositions : awayPositions
+        var best: (receiver: MatchPlayerRef, target: PitchPoint, defender: MatchPlayerRef, cut: PitchPoint)?
+        var bestCost = Double.greatestFiniteMagnitude
+        for index in 1..<11 where index != passer.index {
+            let receiver = MatchPlayerRef(side: passer.side, index: index)
+            let target = position(of: receiver)
+            let dx = target.x - ball.x, dy = (target.y - ball.y) / MatchPitchLayout.aspectRatio
+            let length = hypot(dx, dy)
+            guard length > 0.12 else { continue }
+            for defenderIndex in 1..<11 {
+                let point = defenders[defenderIndex]
+                let t = min(0.80, max(0.22, ((point.x - ball.x) * dx
+                    + (point.y - ball.y) / MatchPitchLayout.aspectRatio * dy) / (length * length)))
+                let cut = ball.interpolated(to: target, progress: t)
+                let cost = MatchPitchLayout.visualDistance(point, cut) + length * 0.09
+                if cost < bestCost {
+                    bestCost = cost
+                    best = (receiver, target, MatchPlayerRef(side: defendingSide, index: defenderIndex), cut)
+                }
+            }
+        }
+        if let best { return best }
+        let receiver = MatchPlayerRef(side: passer.side, index: passer.index == 6 ? 7 : 6)
+        let target = position(of: receiver)
+        let cut = ball.interpolated(to: target, progress: 0.50)
+        return (receiver, target, nearestOutfieldPlayer(on: defendingSide, to: cut), cut)
     }
 
     private func nextPassingTarget(after current: Int, step: Int) -> Int {
@@ -1029,7 +1161,19 @@ private struct MatchTimelineBuilder<R: RandomNumberGenerator> {
                         window = draft.action.primaryPlayer == player ? 0.26 : 0.52
                     } else if case let .restart(from, _, _) = draft.action, from == player { window = 0.5 }
                     else { window = 1 }
-                    travel = max(travel, MatchPitchLayout.visualDistance(start[index], end[index]) / window)
+                    var detour = 0.0
+                    for teammate in 0..<11 where teammate != index {
+                        let dx = start[index].x - start[teammate].x
+                        let dy = (start[index].y - start[teammate].y) / MatchPitchLayout.aspectRatio
+                        let vx = end[index].x - end[teammate].x - dx
+                        let vy = (end[index].y - end[teammate].y) / MatchPitchLayout.aspectRatio - dy
+                        let t = min(1, max(0, -(dx * vx + dy * vy) / max(0.000001, vx * vx + vy * vy)))
+                        let clearance = hypot(dx + vx * t, dy + vy * t)
+                        detour = max(detour, max(0, MatchPitchLayout.minimumVisualDistance - clearance) * 2)
+                    }
+                    // An avoidance run is longer than its endpoint chord. Give
+                    // crowded exchanges time for that sidestep before normalizing.
+                    travel = max(travel, (MatchPitchLayout.visualDistance(start[index], end[index]) + detour) / window)
                 }
             }
             let weight = max(0.72, draft.weight * 0.80, travel * 1.65 / 0.085)
@@ -1056,7 +1200,8 @@ private struct MatchTimelineBuilder<R: RandomNumberGenerator> {
                 homeEndPositions: draft.homeEndPositions,
                 awayStartPositions: draft.awayStartPositions,
                 awayEndPositions: draft.awayEndPositions,
-                setPiece: draft.setPiece
+                setPiece: draft.setPiece,
+                playPattern: draft.playPattern
             )
         }
     }
@@ -1086,6 +1231,7 @@ private struct DraftBeat {
     let awayStartPositions: [PitchPoint]
     let awayEndPositions: [PitchPoint]
     let setPiece: MatchSetPiece?
+    let playPattern: MatchPlayPattern?
 }
 
 private enum MatchFormation {
@@ -1138,12 +1284,100 @@ private enum MatchFormation {
         from current: [PitchPoint],
         for side: MatchSide,
         possession: MatchSide,
-        ball: PitchPoint
+        ball: PitchPoint,
+        opponents: [PitchPoint],
+        action: MatchAction,
+        pattern: MatchPlayPattern?
     ) -> [PitchPoint] {
-        let target = positions(for: side, possession: possession, ball: ball)
+        // On saves/restarts, offer outlets outside the goalkeeper's area. Using
+        // the goal line as the team's anchor packed midfielders around the keeper.
+        let depth = side == .home ? ball.x : 1 - ball.x
+        let anchorDepth = min(0.82, max(0.28, depth))
+        let ball = PitchPoint(x: side == .home ? anchorDepth : 1 - anchorDepth, y: ball.y)
+        var target = positions(for: side, possession: possession, ball: ball)
+        let direction = side.attackDirection
+        let attacking = side == possession
+        let breaking = pattern == .counterattack
+        let nearFlank = ball.y < 0.5 ? 1 : 4
+        let nearMidfield = ball.y < 0.5 ? 6 : 7
+        let farMidfield = nearMidfield == 6 ? 7 : 6
+
+        if attacking {
+            // A short option, a diagonal option and width on the far side form
+            // actual passing triangles. Centre-backs protect against a turnover.
+            target[5] = ball.moved(x: direction * (depth < 0.5 ? 0.12 : -0.14), y: (0.5 - ball.y) * 0.45)
+            target[nearMidfield] = ball.moved(x: direction * 0.09, y: ball.y < 0.5 ? 0.16 : -0.16)
+            target[farMidfield] = ball.moved(x: -direction * 0.04, y: ball.y < 0.5 ? 0.28 : -0.28)
+            target[nearFlank] = ball.moved(x: direction * (pattern == .wideCross ? 0.12 : -0.07),
+                                          y: ball.y < 0.5 ? -0.18 : 0.18)
+            let otherFlank = nearFlank == 1 ? 4 : 1
+            target[otherFlank] = PitchPoint(x: ball.x - direction * 0.20, y: nearFlank == 1 ? 0.78 : 0.22)
+            target[8] = PitchPoint(x: ball.x + direction * 0.20, y: 0.21)
+            target[10] = PitchPoint(x: ball.x + direction * 0.20, y: 0.79)
+            // Alternate which shoulder the striker attacks, without random jitter.
+            target[9] = PitchPoint(x: ball.x + direction * 0.25,
+                                  y: ball.y < 0.5 ? 0.43 : 0.57)
+            if breaking {
+                // Wide runners go immediately; the ball winner is not left alone.
+                for index in [6, 7, 8, 9, 10] {
+                    target[index] = current[index].moved(x: direction * 0.10,
+                                                         y: (target[index].y - current[index].y) * 0.3)
+                }
+            }
+            if action.isPass, let passer = action.primaryPlayer, passer.side == side {
+                let start = current[passer.index]
+                if MatchPitchLayout.visualDistance(start, ball) < 0.10 {
+                    // A short pass needs a lateral release: running straight
+                    // through its receiver makes both players swap shoulders.
+                    target[passer.index] = start.moved(x: -direction * 0.015,
+                        y: start.y < ball.y ? -0.065 : 0.065)
+                } else {
+                    target[passer.index] = start.moved(x: direction * 0.055,
+                        y: start.y < 0.5 ? 0.035 : -0.035)
+                }
+            }
+        } else {
+            // One presses, one covers. Other defenders pick distinct threats and
+            // stay goal-side instead of following the ball in a synchronized block.
+            let pressing = action.defender?.side == side ? action.defender?.index
+                : (1..<11).min { current[$0].distance(to: ball) < current[$1].distance(to: ball) }
+            var assigned = Set<Int>()
+            if let pressing {
+                assigned.insert(pressing)
+                target[pressing] = ball.moved(x: -direction * 0.045,
+                                             y: current[pressing].y < ball.y ? -0.025 : 0.025)
+                if let cover = (1..<8).filter({ !assigned.contains($0) }).min(by: {
+                    current[$0].distance(to: ball) < current[$1].distance(to: ball)
+                }) {
+                    assigned.insert(cover)
+                    target[cover] = ball.moved(x: -direction * 0.13, y: (0.5 - ball.y) * 0.45)
+                }
+            }
+            let threats = (5..<11).sorted {
+                opponents[$0].x * direction < opponents[$1].x * direction
+            }
+            for attacker in threats {
+                guard let marker = (1..<11).filter({ !assigned.contains($0) }).min(by: {
+                    current[$0].distance(to: opponents[attacker]) < current[$1].distance(to: opponents[attacker])
+                }) else { break }
+                assigned.insert(marker)
+                let goalSide = opponents[attacker].moved(x: -direction * 0.075,
+                    y: (0.5 - opponents[attacker].y) * 0.16)
+                target[marker] = target[marker].interpolated(to: goalSide, progress: 0.65)
+            }
+        }
         return zip(current, target).enumerated().map { index, pair in
-            let maxTravel = index == 0 ? 0.012 : 0.023
-            return move(pair.0, toward: pair.1, maximumDistance: maxTravel)
+            // Different roles have different effort. The clock still allocates
+            // enough time for the longest run, preserving the accepted fluency.
+            let effort = [0.4, 0.88, 0.55, 0.58, 0.90, 0.78, 1.0, 0.96, 1.05, 1.08, 1.02][index]
+            let maxTravel = index == 0 ? 0.012 : (breaking ? 0.068 : 0.040) * effort
+            let ownDepth = side == .home ? pair.1.x : 1 - pair.1.x
+            let destination = index == 0 ? pair.1 : PitchPoint(
+                // Support outside the six-yard box; only the actual receiver
+                // attacks the goal line. Otherwise all forwards pile up there.
+                x: side == .home ? min(0.86, max(0.14, ownDepth)) : 1 - min(0.86, max(0.14, ownDepth)),
+                y: pair.1.y)
+            return move(pair.0, toward: destination, maximumDistance: maxTravel)
         }
     }
 

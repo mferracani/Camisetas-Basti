@@ -2,6 +2,122 @@ import XCTest
 @testable import Camisetas_Basti
 
 final class MatchSimulationFactoryTests: XCTestCase {
+    func testMatchesVaryTheirAttackingPatternsAndWinAndLoseDuels() throws {
+        var openings = Set<String>()
+        var throughPasses = 0, switches = 0, retainedDuels = 0, lostDuels = 0
+        for seed in 0..<16 {
+            let beats = try presentationSimulation(seed: UInt64(seed)).beats
+            openings.insert(beats.compactMap { beat -> String? in
+                guard let pattern = beat.playPattern, pattern != .counterattack else { return nil }
+                return String(describing: pattern)
+            }.prefix(12).joined(separator: "/"))
+            for beat in beats {
+                if beat.playPattern == .throughBall, beat.action.isPass,
+                   let receiver = beat.action.endingBallOwner {
+                    let start = receiver.side == .home ? beat.homeStartPositions : beat.awayStartPositions
+                    if (beat.ballEnd.x - start[receiver.index].x) * receiver.side.attackDirection > 0.05 {
+                        throughPasses += 1
+                    }
+                }
+                if beat.playPattern == .switchPlay, beat.action.isPass,
+                   abs(beat.ballEnd.y - beat.ballStart.y) > 0.25 { switches += 1 }
+                if case let .duel(_, _, retained) = beat.action {
+                    if retained { retainedDuels += 1 } else { lostDuels += 1 }
+                }
+            }
+        }
+        XCTAssertGreaterThan(openings.count, 3, "Matches must not repeat the same attacking script")
+        XCTAssertGreaterThan(throughPasses, 8, "Space passes must lead the runner, not just change the caption")
+        XCTAssertGreaterThan(switches, 5, "Switches must cross the pitch")
+        XCTAssertGreaterThan(retainedDuels, 5)
+        XCTAssertGreaterThan(lostDuels, 5)
+    }
+
+    func testGiveAndGoActuallyRunsBeyondTheFirstPass() throws {
+        for seed in 0..<12 {
+            let beats = try presentationSimulation(seed: UInt64(seed)).beats
+            let walls = zip(beats, beats.dropFirst()).filter { first, second in
+                guard case let .pass(a, b) = first.action,
+                      case let .pass(c, d) = second.action, a == d, b == c else { return false }
+                let start = a.side == .home ? first.homeStartPositions : first.awayStartPositions
+                let end = a.side == .home ? first.homeEndPositions : first.awayEndPositions
+                return (end[a.index].x - start[a.index].x) * a.side.attackDirection > 0.02
+                    && (second.ballEnd.x - first.ballStart.x) * a.side.attackDirection > 0.045
+            }
+            let geometry = beats.filter { $0.playPattern == .oneTwo && $0.action.isPass }.map { beat in
+                let player = beat.action.primaryPlayer!
+                let start = player.side == .home ? beat.homeStartPositions : beat.awayStartPositions
+                let end = player.side == .home ? beat.homeEndPositions : beat.awayEndPositions
+                return "\(beat.action): ball \(beat.ballStart) -> \(beat.ballEnd); run \(start[player.index]) -> \(end[player.index])"
+            }
+            XCTAssertFalse(walls.isEmpty, "A wall pass needs the passer to run and receive ahead, seed \(seed): \(geometry)")
+        }
+    }
+
+    func testInterceptionsCutAnActualPassingLane() throws {
+        for seed in 0..<12 {
+            let beats = try presentationSimulation(seed: UInt64(seed)).beats
+            for beat in beats {
+                guard case let .interception(_, intended, defender) = beat.action else { continue }
+                let receivers = intended.side == .home ? beat.homeEndPositions : beat.awayEndPositions
+                let target = receivers[intended.index]
+                let dx = target.x - beat.ballStart.x
+                let dy = (target.y - beat.ballStart.y) / MatchPitchLayout.aspectRatio
+                let cutX = beat.ballEnd.x - beat.ballStart.x
+                let cutY = (beat.ballEnd.y - beat.ballStart.y) / MatchPitchLayout.aspectRatio
+                let lengthSquared = dx * dx + dy * dy
+                guard lengthSquared > 0.0025 else { continue }
+                let along = (cutX * dx + cutY * dy) / lengthSquared
+                let lateral = abs(cutX * dy - cutY * dx) / sqrt(lengthSquared)
+                XCTAssertGreaterThan(along, 0.10, "The interception must leave the passer's feet")
+                XCTAssertLessThan(along, 0.95, "The defender must cut out the pass before its receiver")
+                XCTAssertLessThan(lateral, 0.025, "The ball must follow the attempted passing lane")
+                let defenders = defender.side == .home ? beat.homeEndPositions : beat.awayEndPositions
+                XCTAssertEqual(defenders[defender.index], beat.ballEnd)
+            }
+        }
+    }
+
+    func testTurnoversLeadToForwardRunningAndSupport() throws {
+        for seed in 0..<12 {
+            let beats = try presentationSimulation(seed: UInt64(seed)).beats
+            var counterattacks = 0
+            for index in beats.indices.dropLast(2) {
+                let recovery = beats[index]
+                guard recovery.action.defender != nil,
+                      recovery.possessionBefore != recovery.possessionAfter else { continue }
+                let side = recovery.possessionAfter
+                let next = beats[index + 1]
+                let second = beats[index + 2]
+                guard next.possessionBefore == side, next.possessionAfter == side,
+                      !next.action.isShot, !next.action.isRestart else { continue }
+                let forward = (second.ballEnd.x - recovery.ballEnd.x) * side.attackDirection
+                let start = side == .home ? next.homeStartPositions : next.awayStartPositions
+                let end = side == .home ? second.homeEndPositions : second.awayEndPositions
+                let supportingRuns = (1..<11).filter { player in
+                    player != recovery.action.endingBallOwner?.index
+                        && (end[player].x - start[player].x) * side.attackDirection > 0.035
+                }.count
+                if forward > 0.07 && supportingRuns >= 2 { counterattacks += 1 }
+            }
+            XCTAssertGreaterThanOrEqual(counterattacks, 2, "Both transitions should launch a supported attack, seed \(seed)")
+        }
+    }
+
+    func testPassersAndReceiversMoveWhileTheBallTravels() throws {
+        for seed in 0..<12 {
+            let beats = try presentationSimulation(seed: UInt64(seed)).beats
+            let movingPasses = beats.filter { beat in
+                guard case let .pass(from, to) = beat.action else { return false }
+                let start = from.side == .home ? beat.homeStartPositions : beat.awayStartPositions
+                let end = from.side == .home ? beat.homeEndPositions : beat.awayEndPositions
+                return MatchPitchLayout.visualDistance(start[from.index], end[from.index]) > 0.022
+                    && MatchPitchLayout.visualDistance(start[to.index], end[to.index]) > 0.032
+            }
+            XCTAssertGreaterThanOrEqual(movingPasses.count, 4, "Pass-and-move must be visible, seed \(seed)")
+        }
+    }
+
     func testPlaybackUsesEvenDisplayStepsAndDoesNotCatchUpAfterPause() {
         var clock = MatchPlaybackTime()
         clock.advance(to: 10)
@@ -394,12 +510,12 @@ final class MatchSimulationFactoryTests: XCTestCase {
     }
 
     func testCachedMatchPreservesRenderedContactsAndBeatBoundaries() throws {
-        for seed in 0..<8 {
+        for seed in Array(0..<8) + [21, 31, 73, 2026] {
             let beats = try presentationSimulation(seed: UInt64(seed)).beats
             let motion = MatchMotionTimeline(beats: beats)
             for beat in beats {
                 // Test the actual multi-beat cache used by Canvas, not isolated beats.
-                let touchTimes = [0.0, 0.16, 0.22, 0.26, 0.28, 0.70, 0.78, 0.84, 1.0]
+                let touchTimes = [0.0, 0.16, 0.22, 0.26, 0.28, 0.40, 0.50, 0.70, 0.78, 0.84, 1.0]
                 for local in touchTimes {
                     let progress = beat.startProgress + (beat.endProgress - beat.startProgress) * local
                     let before = try XCTUnwrap(MatchPresentation.frame(beats: beats, progress: max(0, progress - 0.00000001), motion: motion))

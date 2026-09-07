@@ -1,7 +1,7 @@
 # Project State
 
 ## Fase actual
-testflight-build-16-processing
+dynamic-match-play-verified-local
 
 ## Gate status
 - [x] Gate 1: PRD aprobado
@@ -9,6 +9,7 @@ testflight-build-16-processing
 - [x] Gate 3: Build completo
 
 ## Decisiones tomadas
+- Iteración posterior a la prueba de Mati: movimiento individual aceptado; se implementaron paredes, pases al espacio, cambios de frente, gambetas, intercepciones reales, quites y contraataques con apoyos. Los jugadores se desmarcan, dan amplitud, presionan y cubren con roles distintos. Rama `codex/feat-dynamic-match-play`, base `3f6b0d8`, sin commit/publicación nueva. Gates reutilizados dentro del mismo flujo; cámara, kits, duración, resultados y persistencia conservados. Verificación final: 81 unitarios, seis XCUITests y build Release correctos; velocidad y continuidad de posiciones reales, video normal de Simulator y partido completo con resultado guardado. Evidencia y límites: `.project/match-dynamic-play-2026-09-07.md`.
 - Distribución TestFlight solicitada por Mati el 2026-09-07: desde `main` limpio y sincronizado en `9d780a3`, el preflight oficial pasó para la versión `1.0.0` build `16`. El archive firmado y la exportación con destino App Store Connect terminaron correctamente; Xcode confirmó “Upload succeeded” y que el paquete quedó procesándose. Archive local: `build/TestFlight/CamisetasBasti-build16-worldcup.xcarchive`. El procesamiento de Apple, disponibilidad para testers y asignación a grupos siguen pendientes; no se los declara completados con la carga.
 - Integración Git solicitada por Mati el 2026-09-07: «commit y luego hace push de todos los cambios pendientes y merge». Liga Argentina (`36cd5b6`), motion/fluidez (`35ff0eb`) y reglas del proyecto (`9831774`) integrados y publicados en `main` mediante `9853908`, verificado con `git ls-remote`. Las tres ramas de trabajo también están publicadas. Revalidación previa al merge: 76 unitarios y build Release para Simulator correctos; los cinco XCUITests de la verificación final anterior siguen siendo la evidencia de UI del mismo código. Sin archive, upload ni cambios en TestFlight en esta operación.
 - Corrección de fluidez solicitada por Mati: la revisión anterior seguía mostrando carreras rápidas y trabadas. Se corrigieron destinos lejanos de receptores, carreras con aceleración-crucero-frenada y cruces anticipados; reloj único sincronizado con pantalla. Se usa el extremo pausado del rango aprobado: 110 s, sin velocidad aleatoria; Reduce Motion conserva 100 s y tanda 70 s. Se quitan intercambios redundantes entre ataques, sin cambiar los resultados ni su cantidad de goles. Verificado localmente: 76 unitarios, cinco XCUITests y Release correctos; velocidad real de posiciones en 27 semillas, cadencia de Canvas y video de Simulator. Evidencia y límites: `.project/match-running-fluidity-2026-09-07.md`.
@@ -45,6 +46,7 @@ testflight-build-16-processing
 - Los releases ahora deben usar `scripts/archive-testflight.sh`, que exige `main` limpio y sincronizado y valida los marcadores funcionales del Mundial antes de archivar.
 
 ## Handoffs pendientes
+- Juego colectivo implementado y verificado localmente; siguiente rol: revisión perceptual de Mati/Basti en iPad. No requiere otra implementación para cerrar este incremento; commit, merge y nueva distribución quedan sin ejecutar porque no fueron pedidos en esta iteración.
 - Build 16 cargada y procesándose en App Store Connect. Siguiente rol: QA/Product verifica que Apple complete el procesamiento y, recién entonces, habilita el grupo interno de TestFlight que corresponda. La asignación externa requiere elegir el grupo y completar requisitos de Apple si aplica.
 - QA en iPad físico (fluidez/GPU, temperatura y percepción con Mati/Basti) queda pendiente durante la beta. El smoke manual de Reduce Motion no se ejecutó en esta subida; las pruebas automatizadas de Reduce Motion siguen registradas, pero no sustituyen esa revisión perceptual.
 - Gaps de alcance preservados: camisetas de temporadas sin referencia y formato oficial de dos zonas del Apertura/Clausura. La Liga Argentina incluye 30 clubes en eliminación directa; no se modificaron esas decisiones para el merge.

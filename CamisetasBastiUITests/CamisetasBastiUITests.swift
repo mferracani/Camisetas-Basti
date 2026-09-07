@@ -236,6 +236,26 @@ final class CamisetasBastiUITests: XCTestCase {
     }
 
     @MainActor
+    func testTacticalPlaysHaveDistinctAccessibleCommentary() {
+        app.terminate()
+        XCUIDevice.shared.orientation = .landscapeLeft
+        for (moment, expected) in [("one-two", "PARED"), ("through-ball", "ESPACIO"),
+                                   ("switch-play", "CAMBIA DE FRENTE"), ("counterattack", "CONTRAATAQUE")] {
+            app.launchArguments = ["--match-preview", "--match-preview-still"]
+            app.launchEnvironment = ["MATCH_PREVIEW_MOMENT": moment]
+            app.launch()
+            let event = app.descendants(matching: .any).matching(identifier: "match.event").firstMatch
+            XCTAssertTrue(event.waitForExistence(timeout: 10))
+            XCTAssertTrue(event.label.contains(expected), event.label)
+            let capture = XCTAttachment(screenshot: app.screenshot())
+            capture.name = moment
+            capture.lifetime = .keepAlways
+            add(capture)
+            app.terminate()
+        }
+    }
+
+    @MainActor
     func testMatchPlaybackAdvancesAndResumesWithoutBackgroundCatchUp() {
         app.terminate()
         XCUIDevice.shared.orientation = .landscapeLeft

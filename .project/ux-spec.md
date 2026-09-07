@@ -1,5 +1,9 @@
 # UX Spec — Torneo simulado
 
+## Iteración de juego colectivo — 2026-09-07
+
+Mati validó la fluidez de la carrera pero rechazó la simulación por repetitiva y aburrida. Dentro del mismo modal aprobado: combinar paredes (pasar y seguir corriendo), pases al espacio, cambios de frente, desbordes y centros, conducciones y contraataques tras recuperar. Quien pierde la pelota presiona o retrocede; quien la gana tiene salida y compañeros que se ofrecen. Los defensores marcan, cubren al compañero que sale y cierran líneas de pase. Los ataques también pueden perderse antes de llegar al remate. Los apoyos tienen funciones y recorridos diferentes, sin desplazar todo el equipo en bloque. La jugada se debe entender mirando cancha/pelota, con el relato como complemento. Se conservan cámara fija, kits, fluidez, duración de 110 s, Reduce Motion y el resultado/avance aprobados.
+
 ## Iteración motion natural — 2026-09-07
 
 Pedido explícito de Mati con `ui-art-director`, dentro del modal y gates existentes. Tesis: **perfil, apoyo, contacto y continuación de la carrera**. Trayectorias cúbicas conectadas, orientación corporal gradual, zancada por distancia, piernas/brazos articulados, toques cortos y recepción desde el pie. El arquero conserva la caída y se recupera sin saltar de pose al cambiar la jugada. Jugadores más compactos, sombra anclada y profundidad por posición.

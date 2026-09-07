@@ -1052,6 +1052,10 @@ struct MatchSimulationModal: View {
                     let kind: MatchSetPiece? = moment.hasPrefix("free-kick") ? .freeKick
                         : moment.hasPrefix("penalty") ? .penalty : nil
                     let previewBeat = beats.first { beat in
+                        let patterns: [String: MatchPlayPattern] = ["one-two": .oneTwo,
+                            "through-ball": .throughBall, "switch-play": .switchPlay,
+                            "counterattack": .counterattack]
+                        if let pattern = patterns[moment] { return beat.playPattern == pattern && beat.action.isPass }
                         if let kind {
                             guard beat.setPiece == kind else { return false }
                             if moment.hasSuffix("start") {
@@ -1208,8 +1212,19 @@ struct MatchSimulationModal: View {
         case .kickoff:
             return "ARRANCA EL PARTIDO"
         case let .carry(player):
+            if beat.playPattern == .counterattack { return "SALE DE CONTRA \(team(for: player.side).short.uppercased())" }
+            if beat.playPattern == .dribble { return "ENCARA \(team(for: player.side).short.uppercased())" }
+            if beat.playPattern == .throughBall { return "CORRE AL ESPACIO" }
             return "AVANZA \(team(for: player.side).short.uppercased())"
         case let .pass(from, _):
+            switch beat.playPattern {
+            case .oneTwo: return local < 0.22 ? "TOCA Y VA A BUSCAR" : "¡PARED!"
+            case .throughBall: return local < 0.22 ? "SE DESMARCA EL DELANTERO" : "PASE AL ESPACIO"
+            case .switchPlay: return "CAMBIA DE FRENTE"
+            case .counterattack: return "LANZA EL CONTRAATAQUE"
+            case .wideCross: return "ABRE A LA BANDA"
+            default: break
+            }
             return local < 0.22
                 ? "LEVANTA LA CABEZA \(team(for: from.side).short.uppercased())"
                 : "PASE DE \(team(for: from.side).short.uppercased())"

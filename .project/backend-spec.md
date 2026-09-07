@@ -1,5 +1,9 @@
 # Backend Spec — Camisetas Basti
 
+## Contrato incremental: juego colectivo — 2026-09-07
+
+Pedido de Mati después de probar la build: variar jugadas y hacer que los jugadores disputen la pelota y se muevan como un equipo. Se conserva `MatchSimulation` y sus acciones/resultado. `MatchPlayPattern` identifica la intención de una secuencia (pared, pase al espacio, cambio de frente, banda, contraataque o conducción); `MatchBeat.playPattern` es metadato efímero para el relato. Los destinos se eligen con posiciones actuales, presión, línea de pase y apoyos, y se resuelven antes de construir el caché de movimiento. Un pase puede fallar por intercepción; un quite necesita aproximación y contacto antes de transferir posesión. No agrega datos persistidos ni controles tácticos. Handoff: SwiftUI Engineer implementa y QA valida la geometría real, continuidad, ritmo y resultado.
+
 ## Contrato incremental: motion natural — 2026-09-07
 
 `MatchMotionTimeline` es un caché inmutable de curvas por beat/jugador, longitudes recorridas y orientaciones. Se crea junto con `MatchSimulation` y se conserva en el modal. `MatchPlayerMotion` expone orientación, velocidad, fase de zancada y giro para dibujar. No contiene estado de reproducción mutable: muestrear a 30/60/120 Hz o buscar otro instante no cambia la trayectoria.

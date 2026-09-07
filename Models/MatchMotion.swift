@@ -38,7 +38,7 @@ struct MatchMotionTimeline {
                                   tangentEnd: PitchPoint(x: endVelocity.x * span, y: endVelocity.y * span),
                                   window: window, span: span))
             }
-            Self.planPassingLanes(&players)
+            Self.planPassingLanes(&players, owner: beat.action.endingBallOwner)
             for slot in players.indices {
                 players[slot].limitBendSpeed(duration: Self.playbackDuration)
             }
@@ -124,9 +124,10 @@ struct MatchMotionTimeline {
     /// Plan a small passing lane before playback. Resolving a crossing only at
     /// the current frame can abruptly push a teammate to the other side. These
     /// bends anticipate the crossing, with zero offset/velocity at both ends.
-    private static func planPassingLanes(_ curves: inout [Curve]) {
+    private static func planPassingLanes(_ curves: inout [Curve], owner: MatchPlayerRef?) {
         for offset in [0, 11] {
-            for _ in 0..<12 {
+            let protected = owner.map { ($0.side == .home ? 0 : 11) + $0.index }
+            for _ in 0..<16 {
                 var changed = false
                 for first in offset..<(offset + 10) {
                     for second in (first + 1)..<(offset + 11) {
@@ -138,25 +139,44 @@ struct MatchMotionTimeline {
                             if d < closest { closest = d; at = t }
                         }
                         guard closest < MatchPitchLayout.minimumVisualDistance - 0.0005 else { continue }
-                        let a = curves[first].point(at), b = curves[second].point(at)
                         let va = curves[first].derivative(at, excludingBend: true)
                         let vb = curves[second].derivative(at, excludingBend: true)
-                        let moving = hypot(va.x, va.y) > hypot(vb.x, vb.y) ? va : vb
-                        var nx = -moving.y / MatchPitchLayout.aspectRatio, ny = moving.x
+                        var nx = -(va.y - vb.y) / MatchPitchLayout.aspectRatio, ny = va.x - vb.x
                         if hypot(nx, ny) < 0.0001 { nx = 0; ny = 1 }
-                        if (a.x - b.x) * nx + (a.y - b.y) / MatchPitchLayout.aspectRatio * ny < 0 {
-                            nx = -nx; ny = -ny
-                        }
-                        let length = max(0.00001, hypot(nx, ny))
+                        let length = hypot(nx, ny)
                         nx /= length; ny /= length
                         let bumpA = curves[first].bend(at), bumpB = curves[second].bend(at)
-                        let correction = min(0.04, (MatchPitchLayout.minimumVisualDistance + 0.002 - closest)
+                        let correction = min(0.035, (MatchPitchLayout.minimumVisualDistance + 0.003 - closest)
                             / max(0.15, bumpA + bumpB))
-                        curves[first].avoidance = curves[first].avoidance.addingBend(x: nx * correction,
-                            y: ny * correction * MatchPitchLayout.aspectRatio, limit: min(0.030, curves[first].span * 100 * 0.015))
-                        curves[second].avoidance = curves[second].avoidance.addingBend(x: -nx * correction,
-                            y: -ny * correction * MatchPitchLayout.aspectRatio, limit: min(0.030, curves[second].span * 100 * 0.015))
-                        changed = true
+                        var bestA = curves[first], bestB = curves[second], bestClearance = closest
+                        // Try both shoulders and field axes. The ball receiver is
+                        // protected in playback, so teammates must yield here too.
+                        // Score the WHOLE crossing after applying the speed budget;
+                        // shrinking a bend afterwards used to invalidate its route.
+                        for vector in [(nx, ny), (-nx, -ny), (1.0, 0.0), (-1.0, 0.0), (0.0, 1.0), (0.0, -1.0)] {
+                            var a = curves[first], b = curves[second]
+                            let shareA = first == protected ? 0.0 : (second == protected ? 2.0 : 1.0)
+                            let shareB = second == protected ? 0.0 : (first == protected ? 2.0 : 1.0)
+                            a.avoidance = a.avoidance.addingBend(x: vector.0 * correction * shareA,
+                                y: vector.1 * correction * shareA * MatchPitchLayout.aspectRatio, limit: 0.055)
+                            b.avoidance = b.avoidance.addingBend(x: -vector.0 * correction * shareB,
+                                y: -vector.1 * correction * shareB * MatchPitchLayout.aspectRatio, limit: 0.055)
+                            a.limitBendSpeed(duration: playbackDuration)
+                            b.limitBendSpeed(duration: playbackDuration)
+                            var clearance = Double.greatestFiniteMagnitude
+                            for step in 1..<60 {
+                                let t = Double(step) / 60
+                                guard a.bend(t) + b.bend(t) > 0.15 else { continue }
+                                clearance = min(clearance, MatchPitchLayout.visualDistance(a.point(t), b.point(t)))
+                            }
+                            if clearance > bestClearance + 0.00001 {
+                                bestA = a; bestB = b; bestClearance = clearance
+                            }
+                        }
+                        if bestClearance > closest + 0.00001 {
+                            curves[first] = bestA; curves[second] = bestB
+                            changed = true
+                        }
                     }
                 }
                 if !changed { break }
@@ -218,7 +238,10 @@ struct MatchMotionTimeline {
 
         func point(_ local: Double) -> PitchPoint {
             let base = basePoint(local), amount = bend(local)
-            return PitchPoint(x: base.x + avoidance.x * amount, y: base.y + avoidance.y * amount)
+            // Plan against the same touchlines used by the renderer. An outward
+            // bend cannot provide clearance when both players are on the wing.
+            return PitchPoint(x: min(max(0.96, start.x, end.x), max(min(0.04, start.x, end.x), base.x + avoidance.x * amount)),
+                              y: min(0.84, max(0.16, base.y + avoidance.y * amount)))
         }
 
         func bend(_ local: Double) -> Double {
