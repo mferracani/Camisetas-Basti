@@ -1,7 +1,7 @@
 # Project State
 
 ## Fase actual
-match-motion-merged-main
+testflight-build-16-processing
 
 ## Gate status
 - [x] Gate 1: PRD aprobado
@@ -9,6 +9,7 @@ match-motion-merged-main
 - [x] Gate 3: Build completo
 
 ## Decisiones tomadas
+- Distribución TestFlight solicitada por Mati el 2026-09-07: desde `main` limpio y sincronizado en `9d780a3`, el preflight oficial pasó para la versión `1.0.0` build `16`. El archive firmado y la exportación con destino App Store Connect terminaron correctamente; Xcode confirmó “Upload succeeded” y que el paquete quedó procesándose. Archive local: `build/TestFlight/CamisetasBasti-build16-worldcup.xcarchive`. El procesamiento de Apple, disponibilidad para testers y asignación a grupos siguen pendientes; no se los declara completados con la carga.
 - Integración Git solicitada por Mati el 2026-09-07: «commit y luego hace push de todos los cambios pendientes y merge». Liga Argentina (`36cd5b6`), motion/fluidez (`35ff0eb`) y reglas del proyecto (`9831774`) integrados y publicados en `main` mediante `9853908`, verificado con `git ls-remote`. Las tres ramas de trabajo también están publicadas. Revalidación previa al merge: 76 unitarios y build Release para Simulator correctos; los cinco XCUITests de la verificación final anterior siguen siendo la evidencia de UI del mismo código. Sin archive, upload ni cambios en TestFlight en esta operación.
 - Corrección de fluidez solicitada por Mati: la revisión anterior seguía mostrando carreras rápidas y trabadas. Se corrigieron destinos lejanos de receptores, carreras con aceleración-crucero-frenada y cruces anticipados; reloj único sincronizado con pantalla. Se usa el extremo pausado del rango aprobado: 110 s, sin velocidad aleatoria; Reduce Motion conserva 100 s y tanda 70 s. Se quitan intercambios redundantes entre ataques, sin cambiar los resultados ni su cantidad de goles. Verificado localmente: 76 unitarios, cinco XCUITests y Release correctos; velocidad real de posiciones en 27 semillas, cadencia de Canvas y video de Simulator. Evidencia y límites: `.project/match-running-fluidity-2026-09-07.md`.
 - Motion natural solicitado por Mati con `ui-art-director`: trayectorias cúbicas conectadas, zancada por distancia, perfil corporal, apoyos/articulaciones, pelota al pie, vuelo con impulso inicial, sombras y profundidad. Render objetivo 60 Hz sobre el mismo reloj; tanda sin springs, pateador articulado y aterrizaje. Base `36cd5b6` (30 clubes) preservada en `codex/feat-natural-match-motion`. Verificado: 74 unit tests, cuatro XCUITests focales, reejecución final de unitarios/tanda y build Release. Coreografía y evidencia: `.project/match-natural-motion-2026-09-07.md`. No altera resultados, duración ni persistencia.
@@ -44,16 +45,17 @@ match-motion-merged-main
 - Los releases ahora deben usar `scripts/archive-testflight.sh`, que exige `main` limpio y sincronizado y valida los marcadores funcionales del Mundial antes de archivar.
 
 ## Handoffs pendientes
-- Integración de código y push a `main` completados. Siguiente rol: QA en iPad físico (fluidez/GPU, temperatura y percepción con Mati/Basti) antes de una nueva distribución. Gates reutilizados para el mismo flujo; la autorización Git no implica un submit a TestFlight.
+- Build 16 cargada y procesándose en App Store Connect. Siguiente rol: QA/Product verifica que Apple complete el procesamiento y, recién entonces, habilita el grupo interno de TestFlight que corresponda. La asignación externa requiere elegir el grupo y completar requisitos de Apple si aplica.
+- QA en iPad físico (fluidez/GPU, temperatura y percepción con Mati/Basti) queda pendiente durante la beta. El smoke manual de Reduce Motion no se ejecutó en esta subida; las pruebas automatizadas de Reduce Motion siguen registradas, pero no sustituyen esa revisión perceptual.
 - Gaps de alcance preservados: camisetas de temporadas sin referencia y formato oficial de dos zonas del Apertura/Clausura. La Liga Argentina incluye 30 clubes en eliminación directa; no se modificaron esas decisiones para el merge.
 - Antes del proximo TestFlight: smoke manual especifico con `Reduce Motion` y agregar cobertura XCUITest del flujo torneo → partido → cerrar → avance de llave.
 
-### Historial de distribución (sin nueva verificación en esta integración Git)
+### Historial de distribución
 
 - Build 2 subido a App Store Connect/TestFlight el 2026-06-20.
 - Build 3 archivado localmente el 2026-06-20 en `build/TestFlight/CamisetasBasti-build3.xcarchive`.
 - Build 11 subido a App Store Connect/TestFlight el 2026-07-16 desde commit `852ee85`; App Store Connect lo muestra `Finalizado` y `Lista para enviar`.
-- Pendiente: subir el build 14 o posterior desde `main`. El archive correcto compila hasta `CodeSign`, pero el llavero requiere autorizacion local de la clave privada; los builds 12 y 13 existentes se generaron desde el checkout equivocado y no contienen la entrada al Mundial en `SIMULAR TORNEO`.
+- Build 16 cargada a App Store Connect el 2026-09-07 desde `9d780a3`; al cierre de la carga figura procesándose. Reemplaza el bloqueo histórico de firma/documentación de builds 12–15, pero no confirma disponibilidad en TestFlight.
 
 ## Open questions
-- Si se quiere probar en TestFlight externo, asignar build 11 al grupo de testers que corresponda.
+- Cuando Apple termine el procesamiento, definir si la build 16 se habilita sólo al grupo interno o también a testers externos.

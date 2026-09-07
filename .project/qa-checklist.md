@@ -1,5 +1,13 @@
 # QA Checklist — Camisetas Basti
 
+## Distribución TestFlight build 16 — 2026-09-07
+
+- [x] `main` limpio, sincronizado en `9d780a3`; preflight oficial de Mundial correcto.
+- [x] Archive de `1.0.0 (16)` firmado y exportado con destino App Store Connect.
+- [x] Xcode confirmó la carga exitosa y el estado inicial de procesamiento.
+- [ ] Confirmar en App Store Connect que Apple finalizó el procesamiento; recién entonces habilitar el grupo interno que corresponda.
+- [ ] Smoke manual en iPad de Reduce Motion y revisión perceptual de las carreras; el test automatizado no reemplaza esta instancia.
+
 ## Integración Git — 2026-09-07
 
 - [x] Reejecución pre-merge: 76 unitarios sin fallos, en `/private/tmp/camisetas-premerge-20260907-unit.xcresult`.
