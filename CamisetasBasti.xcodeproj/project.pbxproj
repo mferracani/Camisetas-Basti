@@ -7,6 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A7B09E070000000000000005 /* MatchKitStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7B09E070000000000000006 /* MatchKitStyle.swift */; };
+		A7B09E070000000000000007 /* MatchKitStyleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7B09E070000000000000008 /* MatchKitStyleTests.swift */; };
+		A7B09E070000000000000001 /* MatchPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7B09E070000000000000002 /* MatchPresentation.swift */; };
+		A7B09E070000000000000003 /* MatchPitchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7B09E070000000000000004 /* MatchPitchView.swift */; };
 		0FD8B26C0F03541C7FC4FACF /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76C40FED2CFD5D261580D3E4 /* HomeView.swift */; };
 		0FE393DDC800263AE6468DB5 /* FichaView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B2B8D527D4D1887D3419F1A /* FichaView.swift */; };
 		1760C12A0334A3D6D7B4B755 /* ConfettiView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A6C114039DFEE4190BE4670 /* ConfettiView.swift */; };
@@ -59,6 +63,10 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		A7B09E070000000000000006 /* MatchKitStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchKitStyle.swift; sourceTree = "<group>"; };
+		A7B09E070000000000000008 /* MatchKitStyleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchKitStyleTests.swift; sourceTree = "<group>"; };
+		A7B09E070000000000000002 /* MatchPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchPresentation.swift; sourceTree = "<group>"; };
+		A7B09E070000000000000004 /* MatchPitchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchPitchView.swift; sourceTree = "<group>"; };
 		0334935DC31B8A036FF593E2 /* CamisetasBastiUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CamisetasBastiUITests.swift; sourceTree = "<group>"; };
 		0FAA31BF179D543F0D87BED4 /* BigKidButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BigKidButton.swift; sourceTree = "<group>"; };
 		15560836092BE03FFC841988 /* ProgressStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressStore.swift; sourceTree = "<group>"; };
@@ -102,6 +110,7 @@
 			isa = PBXGroup;
 			children = (
 				3A4E77DE5230A87E6BF2DC1D /* MatchSimulation.swift */,
+				A7B09E070000000000000002 /* MatchPresentation.swift */,
 				4C931DEA97DE4115D3EE444A /* Models.swift */,
 			);
 			path = Models;
@@ -135,6 +144,7 @@
 				6B0A727CA581C2D776BC96D4 /* FlagView.swift */,
 				83F441B6FE57284BE1E787C5 /* ProgressStars.swift */,
 				A080A4C516FB2DF723896186 /* ShirtView.swift */,
+				A7B09E070000000000000006 /* MatchKitStyle.swift */,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -152,6 +162,7 @@
 				BE06B1874A1E5CB918D23E86 /* TeamDetailView.swift */,
 				936953927B3BA81F94DE9CD4 /* TeamsView.swift */,
 				D5925DBF3E79794D97A67C82 /* TournamentSimulatorView.swift */,
+				A7B09E070000000000000004 /* MatchPitchView.swift */,
 				C25979F021C1D33E9BE48A12 /* WorldCupFixtureView.swift */,
 			);
 			path = Views;
@@ -214,6 +225,7 @@
 			isa = PBXGroup;
 			children = (
 				47DC59B7B8A7BDBED726CA51 /* MatchSimulationFactoryTests.swift */,
+				A7B09E070000000000000008 /* MatchKitStyleTests.swift */,
 				762734F94A165B1536621F47 /* PaintEngineTests.swift */,
 				592A0F111F4846A6DE8F1576 /* ProgressStoreTests.swift */,
 			);
@@ -333,6 +345,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				D3CA91BABE415243A96A6D12 /* MatchSimulationFactoryTests.swift in Sources */,
+				A7B09E070000000000000007 /* MatchKitStyleTests.swift in Sources */,
 				B41723CF7B02EC7E72047071 /* PaintEngineTests.swift in Sources */,
 				EBDAFF0D06631A4DBBDF1FDF /* ProgressStoreTests.swift in Sources */,
 			);
@@ -357,6 +370,9 @@
 				DAF0142365254A49392E492D /* GamesView.swift in Sources */,
 				0FD8B26C0F03541C7FC4FACF /* HomeView.swift in Sources */,
 				4AABF8CF219FC64EEA218A33 /* MatchSimulation.swift in Sources */,
+				A7B09E070000000000000001 /* MatchPresentation.swift in Sources */,
+				A7B09E070000000000000003 /* MatchPitchView.swift in Sources */,
+				A7B09E070000000000000005 /* MatchKitStyle.swift in Sources */,
 				7C2BD79FCD44FAA76C895D80 /* Models.swift in Sources */,
 				2DFF7BE87CECAC210407D4F5 /* PaintView.swift in Sources */,
 				FEE734781B2A067C692DF0C0 /* ProgressStars.swift in Sources */,

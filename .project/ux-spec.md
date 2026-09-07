@@ -1,5 +1,14 @@
 # UX Spec — Torneo simulado
 
+## Iteración solicitada: camisetas y pelota parada (2026-09-07)
+
+Mati validó la presentación del partido y pidió fidelidad de camisetas, tiros libres y penales. Extensión de los microeventos existentes, sin pantalla ni interacción nueva:
+- Camisetas del partido: conservar el kit titular o suplente real del catálogo; no inventar colores para contraste. Patrones diferentes conservan su geometría, incluida la cuadrícula de Croacia. Contornos e indicadores distinguen lados si los kits auténticos se parecen.
+- Tiro libre: falta → pelota quieta y barrera → carrera/remate por arriba o alrededor de la barrera → gol, atajada, afuera o bloqueo → reposición.
+- Penal durante el partido: falta → pelota en el punto penal, rivales fuera del área y detrás de la pelota → carrera y disparo → gol, atajada o afuera → reposición. No confundir con la tanda final existente.
+- Mantener 22 jugadores, cámara fija, 90–110 segundos y accesibilidad. Reducir movimiento conserva preparación y desenlace, sin salto ni vuelo continuo.
+- El marcador cambia una sola vez al impacto del gol, nunca al cobrar la falta. La tanda final mantiene su marcador independiente y usa las mismas camisetas que el partido.
+
 ## Objetivo de experiencia
 La seccion torneo debe tener dos maneras claras de jugar:
 
@@ -289,3 +298,16 @@ No se busca física profesional. El realismo surge de que cada cambio tiene caus
 - Los pateadores, portadores y receptores están espacialmente conectados con la pelota.
 - Ningún jugador sale del área jugable ni se amontona con un compañero durante una trayectoria.
 - Los reinicios no muestran jugadores corriendo detrás del arco ni saltos de pelota visibles.
+
+## Iteración de presentación — Partidos con más vida (2026-09-07)
+
+Pedido de Mati: mejorar una visualización que se percibe tosca, poco animada y aburrida. Se reutiliza el alcance aprobado: el mismo modal, cámara fija, 22 jugadores, partidos de 90–110 segundos, marcador y avance de llave.
+
+- **Jugador:** conserva camiseta y dorsal; agrega cabeza, brazos, piernas y sombra. Zancada ligada al desplazamiento, preparación/contacto al patear, estirada del arquero y salto de festejo. Los jugadores dejan de frenar todos juntos al cambiar de microjugada.
+- **Pelota:** un único muestreador conecta pie, vuelo y recepción sin saltos. Sombra sobre el césped y altura en centros/remates; la estela corta sigue la trayectoria real.
+- **Cancha:** césped con franjas, arcos con red y tribunas discretas en los bordes. Todos los elementos usan las mismas coordenadas de campo.
+- **Momentos:** remates y atajadas se reconocen en la acción. Al entrar un gol, red, jugadores, tribuna, marcador y cartel del equipo reaccionan juntos; el festejo permanece brevemente durante la reposición.
+- **Jerarquía:** marcador arriba, cancha protagonista, relato con icono abajo. Sin controles de juego nuevos ni exigencia de lectura adicional.
+- **Accesibilidad:** Reduce Motion elimina zancadas, partículas, vuelo en altura y rebotes; mantiene eventos discretos y la misma resolución. El gol nunca se anuncia antes de su entrada al arco.
+
+**Handoff:** SwiftUI Engineer implementa la capa de presentación sobre la timeline existente; QA verifica continuidad renderizada, resultado/cierre/llave y legibilidad en iPad. No requiere nuevas reglas de producto ni persistencia.

@@ -39,6 +39,7 @@ targets:
     scheme:
       testTargets:
         - CamisetasBastiTests
+        - CamisetasBastiUITests
       gatherCoverageData: true
 
   CamisetasBastiTests:

@@ -425,6 +425,18 @@ struct PatternFill: View {
                 case .solid:
                     c1
 
+                case .checkerboard:
+                    Canvas { context, canvasSize in
+                        context.fill(Path(CGRect(origin: .zero, size: canvasSize)), with: .color(c1))
+                        let side = canvasSize.width / 6
+                        for row in 0..<Int(ceil(canvasSize.height / side)) {
+                            for column in 0..<6 where !(row + column).isMultiple(of: 2) {
+                                context.fill(Path(CGRect(x: CGFloat(column) * side, y: CGFloat(row) * side,
+                                                         width: side, height: side)), with: .color(c2))
+                            }
+                        }
+                    }
+
                 case .stripesV:
                     HStack(spacing: 0) {
                         ForEach(0..<Int(w/22)+1, id: \.self) { i in
@@ -488,6 +500,20 @@ struct PatternFill: View {
                             .fill(c2)
                             .frame(width: 56)
                             .position(x: w/2, y: h/2)
+                    }
+
+                case .sashVBordered, .sashVDual:
+                    Canvas { context, canvasSize in
+                        let style = MatchKitStyle(kit: Kit(pattern: pattern, colors: colors))
+                        context.fill(Path(CGRect(origin: .zero, size: canvasSize)), with: .color(c1))
+                        style.drawPattern(in: &context, rect: CGRect(origin: .zero, size: canvasSize))
+                    }
+
+                case .chevron:
+                    Canvas { context, canvasSize in
+                        context.fill(Path(CGRect(origin: .zero, size: canvasSize)), with: .color(c1))
+                        let style = MatchKitStyle(kit: Kit(pattern: pattern, colors: colors))
+                        style.drawPattern(in: &context, rect: CGRect(origin: .zero, size: canvasSize))
                     }
 
                 case .sleevesW:

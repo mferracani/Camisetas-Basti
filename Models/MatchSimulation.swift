@@ -18,6 +18,7 @@ struct MatchBeat: Equatable, Identifiable {
     let homeEndPositions: [PitchPoint]
     let awayStartPositions: [PitchPoint]
     let awayEndPositions: [PitchPoint]
+    var setPiece: MatchSetPiece? = nil
 
     func localProgress(at matchProgress: Double) -> Double {
         guard endProgress > startProgress else { return 1 }
@@ -158,6 +159,11 @@ enum MatchShotOutcome: Equatable, Hashable {
     case blocked
 }
 
+enum MatchSetPiece: Equatable, Hashable {
+    case freeKick
+    case penalty
+}
+
 enum MatchRestartReason: Equatable {
     case kickoffAfterGoal
     case goalkeeperPossession
@@ -174,6 +180,8 @@ enum MatchAction: Equatable {
     case duel(carrier: MatchPlayerRef, defender: MatchPlayerRef, retained: Bool)
     case interception(passer: MatchPlayerRef, intendedReceiver: MatchPlayerRef, defender: MatchPlayerRef)
     case tackle(carrier: MatchPlayerRef, defender: MatchPlayerRef)
+    case foul(carrier: MatchPlayerRef, defender: MatchPlayerRef)
+    case setPieceSetup(taker: MatchPlayerRef, kind: MatchSetPiece)
     case shot(shooter: MatchPlayerRef, outcome: MatchShotOutcome)
     case restart(from: MatchPlayerRef, to: MatchPlayerRef, reason: MatchRestartReason)
     case finalWhistle(possession: MatchSide)
@@ -189,7 +197,8 @@ extension MatchAction {
         switch self {
         case let .kickoff(from, _), let .pass(from, _), let .cross(from, _), let .restart(from, _, _): return from
         case let .carry(player): return player
-        case let .pressure(carrier, _), let .duel(carrier, _, _), let .tackle(carrier, _): return carrier
+        case let .pressure(carrier, _), let .duel(carrier, _, _), let .tackle(carrier, _), let .foul(carrier, _): return carrier
+        case let .setPieceSetup(taker, _): return taker
         case let .interception(passer, _, _): return passer
         case let .shot(shooter, _): return shooter
         case .finalWhistle: return nil
@@ -206,7 +215,7 @@ extension MatchAction {
 
     var defender: MatchPlayerRef? {
         switch self {
-        case let .pressure(_, defender), let .duel(_, defender, _), let .tackle(_, defender): return defender
+        case let .pressure(_, defender), let .duel(_, defender, _), let .tackle(_, defender), let .foul(_, defender): return defender
         case let .interception(_, _, defender): return defender
         default: return nil
         }
@@ -240,7 +249,7 @@ extension MatchAction {
             return to
         case let .carry(player):
             return player
-        case let .pressure(carrier, _), let .duel(carrier, _, _):
+        case let .pressure(carrier, _), let .duel(carrier, _, _), let .foul(carrier, _):
             return carrier
         case let .interception(_, _, defender), let .tackle(_, defender):
             return defender
@@ -253,7 +262,7 @@ extension MatchAction {
             case .goal, .wide:
                 return nil
             }
-        case .finalWhistle:
+        case .setPieceSetup, .finalWhistle:
             return nil
         }
     }
@@ -266,7 +275,7 @@ extension MatchAction {
             return nil
         case let .carry(player):
             return player
-        case let .pressure(carrier, _), let .duel(carrier, _, _):
+        case let .pressure(carrier, _), let .duel(carrier, _, _), let .foul(carrier, _):
             return carrier
         case let .interception(passer, _, defender), let .tackle(passer, defender):
             if localProgress < 0.28 { return passer }
@@ -278,7 +287,7 @@ extension MatchAction {
             if localProgress >= 0.42 && localProgress < 0.82 { return from }
             if localProgress > 0.88 { return to }
             return nil
-        case .finalWhistle:
+        case .setPieceSetup, .finalWhistle:
             return nil
         }
     }
@@ -334,10 +343,10 @@ private struct MatchTimelineBuilder<R: RandomNumberGenerator> {
     mutating func build() -> [MatchBeat] {
         addKickoff(side: .home)
 
-        // Establish both teams as real participants before the first highlight.
-        addPassSequence(side: .home, count: 8, destination: nil)
+        // Introduce both teams briefly, leaving time for chances and their reactions.
+        addPassSequence(side: .home, count: 3, destination: nil)
         addRecovery(winner: .away, kind: .interception)
-        addPassSequence(side: .away, count: 8, destination: nil)
+        addPassSequence(side: .away, count: 3, destination: nil)
         addRecovery(winner: .home, kind: .tackle)
 
         for (index, shot) in shotPlans().enumerated() {
@@ -347,7 +356,12 @@ private struct MatchTimelineBuilder<R: RandomNumberGenerator> {
                     kind: index.isMultiple(of: 2) ? .interception : .tackle
                 )
             }
-            let shooter = addAttackBuildUp(for: shot.side, sequenceIndex: index, shot: shot)
+            let shooter: MatchPlayerRef
+            if let kind = shot.setPiece {
+                shooter = addSetPieceAttack(for: shot.side, kind: kind, sequenceIndex: index)
+            } else {
+                shooter = addAttackBuildUp(for: shot.side, sequenceIndex: index, shot: shot)
+            }
             addShot(shot, preferredShooter: shooter)
             addRestart(after: shot)
 
@@ -382,7 +396,21 @@ private struct MatchTimelineBuilder<R: RandomNumberGenerator> {
             plans.append(randomExtraShot(outcome: .saved, minuteRange: 20...82))
         }
         plans.append(randomExtraShot(outcome: .blocked, minuteRange: 10...84))
-        return plans.sorted { $0.minute < $1.minute }
+        plans.sort { $0.minute < $1.minute }
+        // Dress existing chances as set pieces: never create another goal or
+        // change the already-decided score. Keep the second attack as a cross.
+        let eligible = plans.indices.filter { $0 != 1 }
+        if let freeKickIndex = eligible.randomElement(using: &rng) {
+            plans[freeKickIndex].setPiece = .freeKick
+        }
+        let penaltyCandidates = eligible.filter {
+            plans[$0].setPiece == nil && plans[$0].outcome != .blocked
+        }
+        if Double.random(in: 0..<1, using: &rng) < 0.35,
+           let penaltyIndex = penaltyCandidates.randomElement(using: &rng) {
+            plans[penaltyIndex].setPiece = .penalty
+        }
+        return plans
     }
 
     private mutating func randomExtraShot(outcome: MatchShotOutcome, minuteRange: ClosedRange<Int>) -> ShotPlan {
@@ -581,6 +609,33 @@ private struct MatchTimelineBuilder<R: RandomNumberGenerator> {
         recoveryIndex += 1
     }
 
+    private mutating func addSetPieceAttack(
+        for side: MatchSide,
+        kind: MatchSetPiece,
+        sequenceIndex: Int
+    ) -> MatchPlayerRef {
+        let taker = MatchPlayerRef(side: side, index: 9)
+        let attackX = kind == .penalty ? 0.89 : 0.69
+        let spot = PitchPoint(
+            x: side == .home ? attackX : 1 - attackX,
+            y: kind == .penalty ? 0.5 : (sequenceIndex.isMultiple(of: 2) ? 0.40 : 0.60)
+        )
+        addPassSequence(side: side, count: 2, destination: spot)
+        if carrier != taker {
+            addBeat(action: .pass(from: carrier, to: taker), weight: 0.64,
+                    ballEnd: spot, possessionAfter: side)
+            carrier = taker
+        }
+        let defender = nearestOutfieldPlayer(on: side.opponent, to: spot)
+        addBeat(action: .pressure(carrier: taker, defender: defender), weight: 0.42,
+                ballEnd: spot, possessionAfter: side)
+        addBeat(action: .foul(carrier: taker, defender: defender), weight: 0.72,
+                ballEnd: spot, possessionAfter: side, setPiece: kind)
+        addBeat(action: .setPieceSetup(taker: taker, kind: kind), weight: 1.90,
+                ballEnd: spot, possessionAfter: side, setPiece: kind)
+        return taker
+    }
+
     private mutating func addShot(_ shot: ShotPlan, preferredShooter: MatchPlayerRef) {
         let shooter = preferredShooter
         if carrier != shooter {
@@ -598,7 +653,8 @@ private struct MatchTimelineBuilder<R: RandomNumberGenerator> {
             action: .shot(shooter: shooter, outcome: shot.outcome),
             weight: shot.outcome == .goal ? 1.32 : 0.92,
             ballEnd: end,
-            possessionAfter: shot.side.opponent
+            possessionAfter: shot.side.opponent,
+            setPiece: shot.setPiece
         )
         possession = shot.side.opponent
         carrier = MatchPlayerRef(side: possession, index: 0)
@@ -656,7 +712,8 @@ private struct MatchTimelineBuilder<R: RandomNumberGenerator> {
         action: MatchAction,
         weight: Double,
         ballEnd: PitchPoint,
-        possessionAfter: MatchSide
+        possessionAfter: MatchSide,
+        setPiece: MatchSetPiece? = nil
     ) {
         let startHome = homePositions
         let startAway = awayPositions
@@ -672,6 +729,14 @@ private struct MatchTimelineBuilder<R: RandomNumberGenerator> {
             possession: possessionAfter,
             ball: ballEnd
         )
+        if case let .setPieceSetup(taker, kind) = action {
+            endHome = setPiecePositions(for: .home, taker: taker, kind: kind, spot: ballEnd)
+            endAway = setPiecePositions(for: .away, taker: taker, kind: kind, spot: ballEnd)
+        } else if action.isShot, setPiece != nil {
+            // The wall and waiting players stay in position until contact.
+            endHome = homePositions
+            endAway = awayPositions
+        }
         applyActionPositions(
             action: action,
             ballStart: ball,
@@ -700,7 +765,8 @@ private struct MatchTimelineBuilder<R: RandomNumberGenerator> {
                 homeStartPositions: startHome,
                 homeEndPositions: endHome,
                 awayStartPositions: startAway,
-                awayEndPositions: endAway
+                awayEndPositions: endAway,
+                setPiece: setPiece
             )
         )
         ball = ballEnd
@@ -730,7 +796,7 @@ private struct MatchTimelineBuilder<R: RandomNumberGenerator> {
                 home: &home,
                 away: &away
             )
-        case let .duel(carrier, defender, _):
+        case let .duel(carrier, defender, _), let .foul(carrier, defender):
             setPosition(carrier, point: ballEnd, home: &home, away: &away)
             setPosition(
                 defender,
@@ -781,9 +847,62 @@ private struct MatchTimelineBuilder<R: RandomNumberGenerator> {
                 away: &away
             )
             setPosition(to, point: ballEnd, home: &home, away: &away)
-        case .finalWhistle:
+        case .setPieceSetup, .finalWhistle:
             break
         }
+    }
+
+    private func setPiecePositions(
+        for side: MatchSide,
+        taker: MatchPlayerRef,
+        kind: MatchSetPiece,
+        spot: PitchPoint
+    ) -> [PitchPoint] {
+        let spotX = taker.side == .home ? spot.x : 1 - spot.x
+        let attacking = side == taker.side
+        var points: [PitchPoint]
+        if kind == .penalty {
+            // All outfield non-takers are outside the box, behind the spot and
+            // outside the 9.15 m exclusion radius in the same pitch aspect ratio.
+            points = attacking ? [
+                PitchPoint(x: 0.07, y: 0.50), PitchPoint(x: 0.32, y: 0.22),
+                PitchPoint(x: 0.40, y: 0.40), PitchPoint(x: 0.40, y: 0.60),
+                PitchPoint(x: 0.32, y: 0.78), PitchPoint(x: 0.59, y: 0.31),
+                PitchPoint(x: 0.59, y: 0.69), PitchPoint(x: 0.70, y: 0.23),
+                PitchPoint(x: 0.76, y: 0.37), PitchPoint(x: spotX - 0.045, y: spot.y),
+                PitchPoint(x: 0.76, y: 0.63)
+            ] : [
+                PitchPoint(x: 0.96, y: 0.50), PitchPoint(x: 0.78, y: 0.23),
+                PitchPoint(x: 0.78, y: 0.77), PitchPoint(x: 0.71, y: 0.33),
+                PitchPoint(x: 0.71, y: 0.67), PitchPoint(x: 0.64, y: 0.43),
+                PitchPoint(x: 0.64, y: 0.57), PitchPoint(x: 0.54, y: 0.20),
+                PitchPoint(x: 0.54, y: 0.80), PitchPoint(x: 0.45, y: 0.30),
+                PitchPoint(x: 0.45, y: 0.70)
+            ]
+        } else {
+            let wallY = spot.y + (0.5 - spot.y) * 0.35
+            points = attacking ? [
+                PitchPoint(x: 0.07, y: 0.50), PitchPoint(x: 0.25, y: 0.22),
+                PitchPoint(x: 0.34, y: 0.40), PitchPoint(x: 0.34, y: 0.60),
+                PitchPoint(x: 0.25, y: 0.78), PitchPoint(x: 0.52, y: 0.50),
+                PitchPoint(x: 0.57, y: 0.23), PitchPoint(x: 0.57, y: 0.77),
+                PitchPoint(x: 0.85, y: 0.24), PitchPoint(x: spotX - 0.045, y: spot.y),
+                PitchPoint(x: 0.85, y: 0.76)
+            ] : [
+                PitchPoint(x: 0.96, y: 0.50),
+                PitchPoint(x: spotX + 0.105, y: wallY - 0.092),
+                PitchPoint(x: spotX + 0.105, y: wallY),
+                PitchPoint(x: spotX + 0.105, y: wallY + 0.092),
+                PitchPoint(x: 0.93, y: 0.20), PitchPoint(x: 0.93, y: 0.80),
+                PitchPoint(x: 0.93, y: 0.64), PitchPoint(x: 0.65, y: 0.22),
+                PitchPoint(x: 0.65, y: 0.78), PitchPoint(x: 0.55, y: 0.46),
+                PitchPoint(x: 0.45, y: 0.56)
+            ]
+        }
+        if taker.side == .away {
+            points = points.map { PitchPoint(x: 1 - $0.x, y: $0.y) }
+        }
+        return points
     }
 
     private func setPosition(
@@ -856,12 +975,17 @@ private struct MatchTimelineBuilder<R: RandomNumberGenerator> {
         let laneOffset = Double((Int(shot.minute) % 5) - 2) * 0.035
         switch shot.outcome {
         case .goal:
-            return PitchPoint(x: goalX, y: 0.50 + laneOffset)
+            // A goal finishes behind the line; player positions remain clamped.
+            return PitchPoint(x: shot.side == .home ? 1.018 : -0.018, y: 0.50 + laneOffset)
         case .saved:
             return PitchPoint(x: keeperX, y: 0.50 + laneOffset)
         case .wide:
             return PitchPoint(x: goalX, y: Int(shot.minute).isMultiple(of: 2) ? 0.27 : 0.73)
         case .blocked:
+            if shot.setPiece == .freeKick {
+                let defendingPositions = shot.side == .home ? awayPositions : homePositions
+                return defendingPositions[3]
+            }
             return PitchPoint(x: blockX, y: 0.50 + laneOffset)
         }
     }
@@ -886,7 +1010,8 @@ private struct MatchTimelineBuilder<R: RandomNumberGenerator> {
                 homeStartPositions: draft.homeStartPositions,
                 homeEndPositions: draft.homeEndPositions,
                 awayStartPositions: draft.awayStartPositions,
-                awayEndPositions: draft.awayEndPositions
+                awayEndPositions: draft.awayEndPositions,
+                setPiece: draft.setPiece
             )
         }
     }
@@ -896,6 +1021,7 @@ private struct ShotPlan {
     let minute: Double
     let side: MatchSide
     let outcome: MatchShotOutcome
+    var setPiece: MatchSetPiece? = nil
 }
 
 private enum RecoveryKind {
@@ -914,6 +1040,7 @@ private struct DraftBeat {
     let homeEndPositions: [PitchPoint]
     let awayStartPositions: [PitchPoint]
     let awayEndPositions: [PitchPoint]
+    let setPiece: MatchSetPiece?
 }
 
 private enum MatchFormation {

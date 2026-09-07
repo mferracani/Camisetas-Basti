@@ -1,5 +1,9 @@
 # Backend Spec — Camisetas Basti
 
+## Contrato incremental: pelota parada (2026-09-07)
+
+Extensión efímera de `MatchSimulation`, sin migración ni persistencia nueva. `MatchSetPiece` distingue `freeKick` y `penalty`; `MatchBeat.setPiece` es opcional y conserva la firma de `.shot(shooter:outcome:)`. `MatchAction` agrega `.foul(carrier:defender:)` y `.setPieceSetup(taker:kind:)`. Los goles de pelota parada reemplazan oportunidades existentes, no se suman al resultado calculado. El penal no admite bloqueo de un defensor. La presentación congela la pelota durante preparación, y comparte el umbral de impacto 0.78 con marcador y relato. La selección de camisetas usa sólo kits originales del catálogo, nunca colores sintéticos.
+
 > Especificación de datos local, persistencia, assets y sonidos para app iOS/macOS nativa (SwiftUI). No hay backend remoto. Todo vive en el dispositivo.
 
 ---
@@ -742,7 +746,7 @@ La simulación es efímera y 100% local. No agrega persistencia, red, analytics 
 - `beat[n].ballEnd == beat[n+1].ballStart`.
 - Las posiciones finales de un beat son las posiciones iniciales del siguiente.
 - `possessionAfter` coincide con `possessionBefore` del beat siguiente.
-- Hay 6 posiciones válidas por equipo, con índices `0...5`.
+- Hay 11 posiciones válidas por equipo, con índices `0...10` (corregido contra `state.md` y el modelo implementado).
 - Todos los jugadores permanecen dentro de `x: 0.04...0.96` y `y: 0.16...0.84`.
 - El dueño de una acción controlada empieza sobre la pelota; el dueño final queda protegido por el resolver de separación.
 - Sólo un `shot(.goal)` suma al marcador y la cantidad de esos eventos coincide con `MatchSimulationResult`.
@@ -755,3 +759,7 @@ La simulación es efímera y 100% local. No agrega persistencia, red, analytics 
 - Archivo fuente: `Models/MatchSimulation.swift`.
 
 **Handoff actual:** QA / release. El contrato de datos local y la implementación SwiftUI están completos; no requiere migración de contenido ni de `UserDefaults`.
+
+### Presentación de partidos (2026-09-07)
+
+`MatchPresentation` deriva un `MatchPresentationFrame` de los beats y el progreso: jugadores, pelota, altura, opacidad y estela. Es una proyección efímera para dibujar y probar la misma timeline; no modifica resultados ni agrega datos persistidos. `shotImpactProgress = 0.78` unifica impacto, marcador y feedback. Handoff a SwiftUI y QA dentro del contrato local aprobado.

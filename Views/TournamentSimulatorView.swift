@@ -911,7 +911,15 @@ struct MatchSimulationModal: View {
     let showsPenaltyShootout: Bool
     let onFinish: (MatchSimulationResult) -> Void
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
+    @Environment(\.scenePhase) private var scenePhase
+    private var reduceMotion: Bool {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--match-preview") &&
+            ProcessInfo.processInfo.arguments.contains("--match-reduce-motion") { return true }
+        #endif
+        return systemReduceMotion
+    }
     @State private var elapsed: TimeInterval = 0
     @State private var stage: MatchSimulationStage = .match
     @State private var penaltyElapsed: TimeInterval = 0
@@ -931,6 +939,7 @@ struct MatchSimulationModal: View {
         homeFlag: String? = nil,
         awayFlag: String? = nil,
         showsPenaltyShootout: Bool = true,
+        simulation suppliedSimulation: MatchSimulation? = nil,
         onFinish: @escaping (MatchSimulationResult) -> Void
     ) {
         self.home = home
@@ -939,10 +948,20 @@ struct MatchSimulationModal: View {
         self.awayFlag = awayFlag
         self.showsPenaltyShootout = showsPenaltyShootout
         self.onFinish = onFinish
-        let simulation = MatchSimulationFactory.makeSimulation(home: home, away: away)
+        let simulation = suppliedSimulation ?? MatchSimulationFactory.makeSimulation(home: home, away: away)
         _simulation = State(initialValue: simulation)
         if showsPenaltyShootout && simulation.result.decidedByPenalties {
+            #if DEBUG
+            if ProcessInfo.processInfo.arguments.contains("--match-preview") {
+                var generator = MatchPreviewGenerator()
+                _penaltyShootout = State(initialValue: PenaltyShootoutFactory.makeShootout(
+                    home: home, away: away, winner: simulation.result.winner, rng: &generator))
+            } else {
+                _penaltyShootout = State(initialValue: PenaltyShootoutFactory.makeShootout(home: home, away: away, winner: simulation.result.winner))
+            }
+            #else
             _penaltyShootout = State(initialValue: PenaltyShootoutFactory.makeShootout(home: home, away: away, winner: simulation.result.winner))
+            #endif
         } else {
             _penaltyShootout = State(initialValue: nil)
         }
@@ -953,7 +972,7 @@ struct MatchSimulationModal: View {
         GeometryReader { geo in
             ZStack {
                 LinearGradient(
-                    colors: [Color(hex: "#132413"), Color(hex: "#1E3B20")],
+                    colors: [Color(hex: "#132D38"), Color(hex: "#132722")],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )
@@ -976,21 +995,21 @@ struct MatchSimulationModal: View {
                                 reduceMotion: reduceMotion
                             )
                         } else {
-                            SoccerPitchView(
+                            MatchPitchView(
                                 home: home,
                                 away: away,
-                                result: result,
+                                frame: MatchPresentation.frame(beats: beats, progress: progress, reducedMotion: reduceMotion),
                                 beats: beats,
                                 progress: progress,
-                                homeScore: liveHomeGoals,
-                                awayScore: liveAwayGoals,
+                                elapsed: elapsed,
+                                duration: duration,
                                 reduceMotion: reduceMotion
                             )
                         }
                     }
-                    .frame(maxWidth: 1080, maxHeight: geo.size.height * 0.68)
+                    .frame(maxWidth: 1180, maxHeight: geo.size.height * 0.72)
                     .aspectRatio(1.72, contentMode: .fit)
-                    .padding(.horizontal, geo.size.width < 1100 ? 20 : 42)
+                    .padding(.horizontal, 18)
 
                     bottomEvent
                         .frame(maxWidth: 980)
@@ -1004,12 +1023,58 @@ struct MatchSimulationModal: View {
                 }
             }
         }
+        .statusBarHidden(true)
         .onAppear {
             duration = reduceMotion ? 100 : Double.random(in: 90...110)
+            #if DEBUG
+            if ProcessInfo.processInfo.arguments.contains("--match-preview") {
+                duration = 100
+                if let value = ProcessInfo.processInfo.environment["MATCH_PREVIEW_PROGRESS"], let initial = Double(value) {
+                    elapsed = min(1, max(0, initial)) * duration
+                }
+                if let moment = ProcessInfo.processInfo.environment["MATCH_PREVIEW_MOMENT"] {
+                    if moment.hasPrefix("shootout"), let penaltyShootout {
+                        let index = penaltyShootout.shots.firstIndex(where: { $0.outcome == .goal }) ?? 0
+                        elapsed = duration
+                        stage = moment == "shootout-finished" ? .finished : .penalties
+                        let local = moment == "shootout-before-goal" ? 0.74 : 0.82
+                        penaltyElapsed = stage == .finished ? penaltyDuration : (Double(index) + local) * penaltyShotDuration
+                    }
+                    let kind: MatchSetPiece? = moment.hasPrefix("free-kick") ? .freeKick
+                        : moment.hasPrefix("penalty") ? .penalty : nil
+                    let previewBeat = beats.first { beat in
+                        if let kind {
+                            guard beat.setPiece == kind else { return false }
+                            if moment.hasSuffix("start") {
+                                if case .foul = beat.action { return true }
+                                return false
+                            }
+                            if moment.hasSuffix("shot") || moment.hasSuffix("result") { return beat.action.isShot }
+                            if case .setPieceSetup = beat.action { return true }
+                            return false
+                        }
+                        return beat.action.shotOutcome == .goal
+                    }
+                    if let previewBeat, !moment.hasPrefix("shootout") {
+                        let local = kind != nil
+                            ? (moment.hasSuffix("start") ? 0.05 : moment.hasSuffix("shot") ? 0.64 : moment.hasSuffix("result") ? 0.86 : 0.96)
+                            : (moment == "before-goal" ? 0.74 : 0.82)
+                        elapsed = (previewBeat.startProgress + (previewBeat.endProgress - previewBeat.startProgress) * local) * duration
+                    }
+                }
+            }
+            #endif
             lastTickDate = Date()
         }
         .onReceive(timer) { tickDate in
+            #if DEBUG
+            if ProcessInfo.processInfo.arguments.contains("--match-preview-still") { return }
+            #endif
             guard stage != .finished else { return }
+            guard scenePhase == .active else {
+                lastTickDate = tickDate
+                return
+            }
             let tickDuration = lastTickDate.map {
                 min(0.1, max(0, tickDate.timeIntervalSince($0)))
             } ?? (1.0 / 30.0)
@@ -1095,7 +1160,7 @@ struct MatchSimulationModal: View {
         guard let penaltyShootout else { return 0 }
         if stage == .finished { return penaltyShootout.shots.count }
         let completed = Int(penaltyElapsed / penaltyShotDuration)
-        let includeCurrent = currentPenaltyLocalProgress > 0.76 ? 1 : 0
+        let includeCurrent = currentPenaltyLocalProgress >= MatchPresentation.shotImpactProgress ? 1 : 0
         return min(penaltyShootout.shots.count, completed + includeCurrent)
     }
 
@@ -1129,7 +1194,7 @@ struct MatchSimulationModal: View {
             let teamName = team(for: shot.side).short.uppercased()
             if currentPenaltyLocalProgress < 0.25 { return "\(teamName) TOMA CARRERA" }
             if currentPenaltyLocalProgress < 0.52 { return "PATEA \(teamName)" }
-            if currentPenaltyLocalProgress < 0.76 { return "VIAJA LA PELOTA" }
+            if currentPenaltyLocalProgress < MatchPresentation.shotImpactProgress { return "VIAJA LA PELOTA" }
             return shot.outcome == .goal ? "GOOOL DE \(teamName)" : "ATAJÓ EL ARQUERO"
         }
         if isFinished {
@@ -1157,7 +1222,7 @@ struct MatchSimulationModal: View {
             guard case let .shot(shooter, outcome) = beat.action,
                   shooter.side == side,
                   outcome == .goal else { return false }
-            let goalCrossing = beat.startProgress + (beat.endProgress - beat.startProgress) * 0.78
+            let goalCrossing = beat.startProgress + (beat.endProgress - beat.startProgress) * MatchPresentation.shotImpactProgress
             return progress >= goalCrossing
         }.count
     }
@@ -1194,10 +1259,21 @@ struct MatchSimulationModal: View {
             return local < 0.5
                 ? "VA AL CRUCE \(team(for: defender.side).short.uppercased())"
                 : "RECUPERA \(team(for: defender.side).short.uppercased())"
+        case let .foul(carrier, _):
+            return "¡FALTA! A FAVOR DE \(team(for: carrier.side).short.uppercased())"
+        case let .setPieceSetup(taker, kind):
+            let teamName = team(for: taker.side).short.uppercased()
+            return kind == .penalty ? "PENAL PARA \(teamName) · TOMA CARRERA"
+                : "TIRO LIBRE PARA \(teamName) · SE ARMA LA BARRERA"
         case let .shot(shooter, outcome):
             let teamName = team(for: shooter.side).short.uppercased()
-            if local < 0.34 { return "ARMA EL REMATE \(teamName)" }
-            if local < 0.72 { return "PATEA \(teamName)" }
+            if local < 0.34 {
+                if let kind = beat.setPiece {
+                    return "\(kind == .penalty ? "PENAL" : "TIRO LIBRE") · TOMA CARRERA \(teamName)"
+                }
+                return "ARMA EL REMATE \(teamName)"
+            }
+            if local < MatchPresentation.shotImpactProgress { return "PATEA \(teamName)" }
             switch outcome {
             case .goal: return "GOOOL DE \(teamName)"
             case .saved: return "ATAJADÓN DEL ARQUERO"
@@ -1217,7 +1293,8 @@ struct MatchSimulationModal: View {
     }
 
     private var scoreboard: some View {
-        HStack(spacing: 16) {
+        VStack(spacing: 0) {
+          HStack(spacing: 16) {
             scoreTeam(
                 team: home,
                 flag: homeFlag,
@@ -1225,9 +1302,16 @@ struct MatchSimulationModal: View {
                 penaltyScore: homePenaltyDisplay,
                 reverse: false
             )
-            VStack(spacing: 3) {
+            VStack(spacing: 5) {
+                HStack(spacing: 5) {
+                    Circle().fill(Color(hex: "#7DDB8B")).frame(width: 5, height: 5)
+                    Text(stage == .finished ? "FINAL" : "EN JUEGO")
+                        .font(.system(size: 9, weight: .heavy, design: .rounded))
+                        .tracking(1.2).foregroundColor(.white.opacity(0.65))
+                }
                 Text(scoreboardTitle)
-                    .font(.custom("Nunito-Black", size: 18))
+                    .font(.system(size: 25, weight: .black, design: .rounded))
+                    .monospacedDigit()
                     .foregroundColor(Color(hex: "#FFC93C"))
                 Text(scoreboardSubtitle)
                     .font(.custom("Nunito-Black", size: 10))
@@ -1240,15 +1324,24 @@ struct MatchSimulationModal: View {
                 penaltyScore: awayPenaltyDisplay,
                 reverse: true
             )
-        }
+          }
         .padding(.horizontal, 22)
         .padding(.vertical, 14)
-        .background(Color.black.opacity(0.32))
+          GeometryReader { geometry in
+              Rectangle().fill(.white.opacity(0.08))
+              Rectangle().fill(Color(hex: "#7DDB8B"))
+                  .frame(width: geometry.size.width * progress)
+          }.frame(height: 3)
+        }
+        .background(Color(hex: "#10242E").opacity(0.95))
         .cornerRadius(24)
         .overlay(
             RoundedRectangle(cornerRadius: 24)
                 .stroke(Color.white.opacity(0.15), lineWidth: 1)
         )
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(home.short) \(displayHomeGoals), \(away.short) \(displayAwayGoals)")
+        .accessibilityIdentifier("match.scoreboard")
     }
 
     private var displayHomeGoals: Int {
@@ -1281,7 +1374,10 @@ struct MatchSimulationModal: View {
 
     private func scoreTeam(team: Team?, flag: String?, score: Int, penaltyScore: Int?, reverse: Bool) -> some View {
         HStack(spacing: 12) {
-            if reverse { Spacer(minLength: 0) }
+            if reverse {
+                scoreNumber(score, side: .away)
+                Spacer(minLength: 0)
+            }
             if let flag {
                 Text(flag).font(.system(size: 40))
             } else if let team {
@@ -1289,15 +1385,12 @@ struct MatchSimulationModal: View {
             }
             if let team {
                 Text(team.short.uppercased())
-                    .font(.custom("Nunito-Black", size: 18))
+                    .font(.system(size: 22, weight: .black, design: .rounded))
                     .foregroundColor(.white)
                     .lineLimit(1)
                     .minimumScaleFactor(0.62)
             }
-            Text("\(score)")
-                .font(.custom("Nunito-Black", size: 38))
-                .foregroundColor(.white)
-                .monospacedDigit()
+            if !reverse { Spacer(minLength: 0) }
             if let penaltyScore {
                 Text("P \(penaltyScore)")
                     .font(.custom("Nunito-Black", size: 15))
@@ -1307,9 +1400,30 @@ struct MatchSimulationModal: View {
                     .padding(.vertical, 5)
                     .background(Capsule().fill(Color.white.opacity(0.12)))
             }
-            if !reverse { Spacer(minLength: 0) }
+            if !reverse { scoreNumber(score, side: .home) }
         }
         .frame(maxWidth: .infinity)
+    }
+
+    private func scoreNumber(_ score: Int, side: MatchSide) -> some View {
+        let age = goalAge(for: side)
+        return Text("\(score)")
+            .font(.system(size: 46, weight: .black, design: .rounded))
+            .foregroundColor(age == nil ? .white : Color(hex: "#FFC93C")).monospacedDigit()
+            .frame(minWidth: 54)
+            .padding(.vertical, 3)
+            .background(RoundedRectangle(cornerRadius: 12).fill(.white.opacity(0.06)))
+            .scaleEffect(reduceMotion ? 1 : 1 + (age.map { 0.16 * exp(-$0 * 4) * sin($0 * 16) } ?? 0))
+    }
+
+    private func goalAge(for side: MatchSide) -> Double? {
+        guard stage == .match, let beat = beats.last(where: {
+            $0.action.shotOutcome == .goal && $0.action.primaryPlayer?.side == side &&
+            progress >= $0.startProgress + ($0.endProgress - $0.startProgress) * MatchPresentation.shotImpactProgress
+        }) else { return nil }
+        let impact = beat.startProgress + (beat.endProgress - beat.startProgress) * MatchPresentation.shotImpactProgress
+        let age = (progress - impact) * duration
+        return age < 2.4 ? age : nil
     }
 
     private var winnerFlag: String? {
@@ -1317,20 +1431,42 @@ struct MatchSimulationModal: View {
     }
 
     private var bottomEvent: some View {
-        Text(currentEvent)
-            .font(.custom("Nunito-Black", size: 24))
+        HStack(spacing: 14) {
+            Image(systemName: eventIcon)
+                .font(.system(size: 23, weight: .bold))
+                .frame(width: 44, height: 40)
+                .foregroundColor(Color(hex: "#FFC93C"))
+            Text(currentEvent)
+            .font(.system(size: 22, weight: .black, design: .rounded))
             .foregroundColor((currentEvent.contains("GOOOL") || currentEvent.contains("ATAJAD")) ? Color(hex: "#FFC93C") : .white)
             .lineLimit(1)
             .minimumScaleFactor(0.65)
-            .padding(.horizontal, 28)
-            .frame(height: 58)
+            Spacer(minLength: 0)
+        }
+            .padding(.horizontal, 18)
+            .frame(height: 60)
             .frame(maxWidth: .infinity)
             .background(Color.black.opacity(0.26))
             .cornerRadius(20)
+            .accessibilityElement(children: .ignore)
             .accessibilityLabel(
                 "Minuto \(matchMinute). \(home.short) \(displayHomeGoals), \(away.short) \(displayAwayGoals). \(currentEvent)"
             )
             .accessibilityAddTraits(.updatesFrequently)
+            .accessibilityIdentifier("match.event")
+    }
+
+    private var eventIcon: String {
+        if isFinished { return "flag.checkered" }
+        if currentEvent.contains("GOOOL") { return "star.fill" }
+        if currentEvent.contains("ATAJA") { return "hand.raised.fill" }
+        if currentEvent.contains("FALTA") { return "hand.raised.fill" }
+        if currentOpenPlayBeat?.setPiece != nil { return "scope" }
+        guard let action = currentOpenPlayBeat?.action else { return "soccerball" }
+        if action.isShot { return "scope" }
+        if action.defender != nil { return "shield.fill" }
+        if action.isPass || action.isCross { return "arrow.triangle.branch" }
+        return "soccerball"
     }
 
     private var finishedPanel: some View {
@@ -1384,6 +1520,7 @@ struct MatchSimulationModal: View {
                     .cornerRadius(20)
             }
             .buttonStyle(.plain)
+            .accessibilityIdentifier("match.close")
         }
         .padding(36)
         .frame(maxWidth: 540)
@@ -1543,7 +1680,7 @@ private struct PenaltyShootoutView: View {
 
     private var visibleShotCount: Int {
         let completed = Int(elapsed / shotDuration)
-        let includeCurrent = localProgress > 0.76 ? 1 : 0
+        let includeCurrent = localProgress >= MatchPresentation.shotImpactProgress ? 1 : 0
         return min(shootout.shots.count, completed + includeCurrent)
     }
 
@@ -1564,9 +1701,9 @@ private struct PenaltyShootoutView: View {
             let ball = ballPoint(for: shot)
             let kicker = kickerPoint(for: shot.side)
             let keeper = keeperPoint(for: shot)
-            let kickerTeam = team(for: shot.side)
             let keeperTeam = team(for: shot.side == .home ? .away : .home)
-            let kickerStyle = jerseyStyle(for: kickerTeam, fallback: ("#75AADB", "#FFFFFF"))
+            let kits = MatchKitStyle.pair(home: home, away: away)
+            let kickerStyle = shot.side == .home ? kits.0 : kits.1
             let keeperStyle = jerseyStyle(for: keeperTeam, fallback: ("#263645", "#FFC93C"))
 
             ZStack {
@@ -1582,7 +1719,7 @@ private struct PenaltyShootoutView: View {
                     .position(point(keeper, in: geo.size))
                     .animation(reduceMotion ? nil : .interactiveSpring(response: 0.22, dampingFraction: 0.72), value: localProgress)
 
-                if motionProgress > 0.42 {
+                if !reduceMotion && motionProgress > 0.42 && motionProgress < 0.78 {
                     BallTrail(from: CGPoint(x: 0.5, y: 0.72), to: ball, isShot: true, isCross: false)
                         .stroke(Color(hex: "#FFC93C").opacity(0.86), style: StrokeStyle(lineWidth: 5, lineCap: .round))
                         .frame(width: geo.size.width, height: geo.size.height)
@@ -1665,13 +1802,13 @@ private struct PenaltyShootoutView: View {
 
     private func keeperPoint(for shot: PenaltyShot) -> CGPoint {
         let base = CGPoint(x: 0.5, y: 0.315)
-        guard motionProgress > 0.38 else { return base }
-        let dive = smooth((motionProgress - 0.38) / 0.36)
+        guard motionProgress > 0.44 else { return base }
+        let dive = smooth((motionProgress - 0.44) / 0.34)
         return interpolate(from: base, to: shot.keeperTarget, progress: dive)
     }
 
     private func keeperRotation(for shot: PenaltyShot) -> Double {
-        guard motionProgress > 0.42 else { return 0 }
+        guard motionProgress > 0.44 else { return 0 }
         let direction = shot.keeperTarget.x < 0.5 ? -1.0 : 1.0
         return direction * (shot.outcome == .save ? 28 : 18)
     }
@@ -1849,7 +1986,7 @@ private struct PenaltyKeeperView: View {
 }
 
 private struct PenaltyKickerView: View {
-    let style: JerseyStyle
+    let style: MatchKitStyle
     let number: Int
     let isKicking: Bool
 
@@ -1859,15 +1996,16 @@ private struct PenaltyKickerView: View {
                 .fill(Color(hex: "#DCA57C"))
                 .frame(width: 30, height: 30)
                 .offset(y: -56)
-            RoundedRectangle(cornerRadius: 15)
-                .fill(style.primary)
+            Canvas { context, size in
+                style.drawShirt(in: &context, rect: CGRect(origin: .zero, size: size))
+            }
                 .frame(width: 54, height: 66)
                 .overlay(
                     Text("\(number)")
-                        .font(.custom("Nunito-Black", size: 24))
-                        .foregroundColor(style.text)
+                        .font(.system(size: 24, weight: .black, design: .rounded))
+                        .foregroundColor(style.ink)
                 )
-                .overlay(RoundedRectangle(cornerRadius: 15).stroke(style.border, lineWidth: 3))
+                .overlay(RoundedRectangle(cornerRadius: 10).stroke(.white.opacity(0.9), lineWidth: 2))
             HStack(spacing: 18) {
                 Capsule()
                     .fill(style.secondary)
@@ -1881,12 +2019,12 @@ private struct PenaltyKickerView: View {
                     .offset(y: 46)
             }
             Capsule()
-                .fill(style.secondary)
+                .fill(style.sleeveColor)
                 .frame(width: 14, height: 44)
                 .rotationEffect(.degrees(isKicking ? -42 : -18))
                 .offset(x: -34, y: -18)
             Capsule()
-                .fill(style.secondary)
+                .fill(style.sleeveColor)
                 .frame(width: 14, height: 44)
                 .rotationEffect(.degrees(isKicking ? 38 : 18))
                 .offset(x: 34, y: -18)
@@ -1973,425 +2111,6 @@ private struct PenaltyShootoutStrip: View {
     }
 }
 
-private struct SoccerPitchView: View {
-    let home: Team
-    let away: Team
-    let result: MatchSimulationResult
-    let beats: [MatchBeat]
-    let progress: Double
-    let homeScore: Int
-    let awayScore: Int
-    let reduceMotion: Bool
-
-    var body: some View {
-        GeometryReader { geo in
-            let homeStyle = jerseyStyle(for: home, fallback: ("#75AADB", "#FFFFFF"), opponent: away)
-            let awayStyle = jerseyStyle(for: away, fallback: ("#E2272F", "#111111"), opponent: home)
-
-            ZStack {
-                RoundedRectangle(cornerRadius: 28)
-                    .fill(
-                        LinearGradient(
-                            colors: [Color(hex: "#2C8A42"), Color(hex: "#1F7236")],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
-
-                SoccerPitchLines()
-                    .stroke(Color.white.opacity(0.82), lineWidth: 3)
-                    .padding(24)
-
-                if let play = visualPlay {
-                    ForEach(play.homePositions.indices, id: \.self) { index in
-                        let player = MatchPlayerRef(side: .home, index: index)
-                        PlayerDot(
-                            style: homeStyle,
-                            label: "\(index + 1)",
-                            isActive: carrier(for: play) == player,
-                            isReceiver: receiver(for: play) == player,
-                            isPressing: pressingPlayer(for: play) == player,
-                            isGoalkeeper: index == 0
-                        )
-                        .scaleEffect(carrier(for: play) == player ? 1.13 : 1)
-                        .rotationEffect(.degrees(playerLean(player: player, play: play)))
-                        .position(scaled(play.homePositions[index], in: geo.size))
-                        .zIndex(playerDepth(for: player, play: play))
-                    }
-
-                    ForEach(play.awayPositions.indices, id: \.self) { index in
-                        let player = MatchPlayerRef(side: .away, index: index)
-                        PlayerDot(
-                            style: awayStyle,
-                            label: "\(index + 1)",
-                            isActive: carrier(for: play) == player,
-                            isReceiver: receiver(for: play) == player,
-                            isPressing: pressingPlayer(for: play) == player,
-                            isGoalkeeper: index == 0
-                        )
-                        .scaleEffect(carrier(for: play) == player ? 1.13 : 1)
-                        .rotationEffect(.degrees(playerLean(player: player, play: play)))
-                        .position(scaled(play.awayPositions[index], in: geo.size))
-                        .zIndex(playerDepth(for: player, play: play))
-                    }
-
-                    if play.showsTrail {
-                        BallTrail(
-                            from: play.ballStart,
-                            to: play.ball,
-                            isShot: play.beat.action.isShot,
-                            isCross: play.beat.action.isCross
-                        )
-                            .stroke(
-                                play.beat.action.isShot || play.beat.action.isCross
-                                    ? Color(hex: "#FFC93C").opacity(0.82)
-                                    : Color.white.opacity(0.30),
-                                style: StrokeStyle(
-                                    lineWidth: play.beat.action.isShot ? 5 : (play.beat.action.isCross ? 4 : 3),
-                                    lineCap: .round,
-                                    dash: play.beat.action.isShot || play.beat.action.isCross ? [] : [7, 7]
-                                )
-                            )
-                            .frame(width: geo.size.width, height: geo.size.height)
-                    }
-
-                    FootballView(isShot: play.beat.action.isShot || play.beat.action.isCross, spin: reduceMotion ? 0 : progress)
-                        .position(scaled(play.ball, in: geo.size))
-                        .opacity(play.ballOpacity)
-                        .zIndex(8)
-
-                    shotFeedback(for: play, size: geo.size)
-                }
-            }
-            .clipShape(RoundedRectangle(cornerRadius: 28))
-            .overlay(
-                RoundedRectangle(cornerRadius: 28)
-                    .stroke(Color.white.opacity(0.18), lineWidth: 2)
-            )
-        }
-        .accessibilityHidden(true)
-    }
-
-    @ViewBuilder
-    private func shotFeedback(for play: TimelineVisualPlay, size: CGSize) -> some View {
-        if case let .shot(shooter, outcome) = play.beat.action {
-            if play.localProgress > 0.28 && play.localProgress < 0.62 {
-                ShotBurst(side: shooter.side, outcome: outcome)
-                    .position(scaled(play.ballStart, in: size))
-            }
-
-            if play.localProgress > 0.72 {
-                switch outcome {
-                case .goal:
-                    Text("GOOOL")
-                        .font(.custom("Nunito-Black", size: 54))
-                        .foregroundColor(Color(hex: "#FFC93C"))
-                        .shadow(color: Color.black.opacity(0.5), radius: 8, x: 0, y: 5)
-                        .scaleEffect(reduceMotion ? 1 : 1 + CGFloat(sin(play.localProgress * 18)) * 0.06)
-                case .saved:
-                    SaveFlash()
-                        .position(scaled(play.ball, in: size))
-                case .wide:
-                    ShotOutcomeFlash(label: "AFUERA", systemImage: "arrow.up.right", color: Color(hex: "#FFC93C"))
-                        .position(feedbackPosition(for: play.ball, in: size))
-                case .blocked:
-                    ShotOutcomeFlash(label: "BLOQUEO", systemImage: "shield.fill", color: .white)
-                        .position(scaled(play.ball, in: size))
-                }
-            }
-        }
-    }
-
-    private var visualPlay: TimelineVisualPlay? {
-        guard let beat = beats.first(where: {
-            progress >= $0.startProgress && (progress < $0.endProgress || $0.id == beats.last?.id)
-        }) ?? beats.last else { return nil }
-
-        let rawLocal = beat.localProgress(at: progress)
-        let local = reduceMotion ? stepped(rawLocal) : rawLocal
-        let playerProgress = smooth(local)
-        let owner = beat.action.ballOwner(at: local)
-        let rawBall = ballPosition(for: beat, local: local)
-        let homePositions = beat.playerPositions(
-            for: .home,
-            progress: playerProgress,
-            protectedIndex: owner?.side == .home ? owner?.index : nil
-        )
-        let awayPositions = beat.playerPositions(
-            for: .away,
-            progress: playerProgress,
-            protectedIndex: owner?.side == .away ? owner?.index : nil
-        )
-        let ball = ballAtFeet(
-            rawBall,
-            owner: owner,
-            homePositions: homePositions,
-            awayPositions: awayPositions
-        )
-
-        return TimelineVisualPlay(
-            beat: beat,
-            localProgress: local,
-            ball: normalized(ball),
-            ballStart: normalized(beat.ballStart),
-            homePositions: homePositions.map(normalized),
-            awayPositions: awayPositions.map(normalized),
-            ballOpacity: ballOpacity(for: beat.action, local: local),
-            showsTrail: shouldShowTrail(for: beat, local: local, ball: ball)
-        )
-    }
-
-    private func ballPosition(for beat: MatchBeat, local: Double) -> PitchPoint {
-        if let restartOrigin = beat.action.restartOrigin {
-            guard local >= 0.42 else { return beat.ballStart }
-            let restartProgress = smooth(min(1, max(0, (local - 0.58) / 0.42)))
-            return restartOrigin.interpolated(to: beat.ballEnd, progress: restartProgress)
-        }
-
-        let travel = ballTravelProgress(for: beat.action, local: local)
-        if beat.action.isCross {
-            let controlX = beat.ballStart.x >= 0.5
-                ? min(0.96, max(beat.ballStart.x, beat.ballEnd.x) + 0.07)
-                : max(0.04, min(beat.ballStart.x, beat.ballEnd.x) - 0.07)
-            let control = PitchPoint(
-                x: controlX,
-                y: (beat.ballStart.y + beat.ballEnd.y) / 2
-            )
-            return quadraticBezier(
-                from: beat.ballStart,
-                control: control,
-                to: beat.ballEnd,
-                progress: travel
-            )
-        }
-
-        return beat.ballStart.interpolated(to: beat.ballEnd, progress: travel)
-    }
-
-    private func ballAtFeet(
-        _ ball: PitchPoint,
-        owner: MatchPlayerRef?,
-        homePositions: [PitchPoint],
-        awayPositions: [PitchPoint]
-    ) -> PitchPoint {
-        guard let owner else { return ball }
-        let positions = owner.side == .home ? homePositions : awayPositions
-        guard positions.indices.contains(owner.index) else { return ball }
-        return positions[owner.index].moved(
-            x: owner.side.attackDirection * 0.016,
-            y: 0.024
-        )
-    }
-
-    private func ballTravelProgress(for action: MatchAction, local: Double) -> Double {
-        if action.isShot {
-            let travel = min(1, max(0, (local - 0.26) / 0.52))
-            return travel * travel
-        }
-        if action.isCross {
-            let travel = min(1, max(0, (local - 0.16) / 0.68))
-            return smooth(travel)
-        }
-        return smooth(local)
-    }
-
-    private func ballOpacity(for action: MatchAction, local: Double) -> Double {
-        guard action.isRestart else { return 1 }
-        if local < 0.42 { return 1 - (local / 0.42) }
-        if local < 0.58 { return 0 }
-        return min(1, (local - 0.58) / 0.42)
-    }
-
-    private func shouldShowTrail(for beat: MatchBeat, local: Double, ball: PitchPoint) -> Bool {
-        guard local > 0.16 && local < 0.92 else { return false }
-        if beat.action.isShot || beat.action.isCross { return true }
-        return beat.action.isPass && beat.ballStart.distance(to: ball) > 0.13
-    }
-
-    private func carrier(for play: TimelineVisualPlay) -> MatchPlayerRef? {
-        play.beat.action.ballOwner(at: play.localProgress)
-    }
-
-    private func receiver(for play: TimelineVisualPlay) -> MatchPlayerRef? {
-        guard play.localProgress < 0.78 else { return nil }
-        return play.beat.action.receiver
-    }
-
-    private func pressingPlayer(for play: TimelineVisualPlay) -> MatchPlayerRef? {
-        if let defender = play.beat.action.defender { return defender }
-        if case let .shot(shooter, outcome) = play.beat.action,
-           outcome == .saved || outcome == .blocked {
-            return MatchPlayerRef(side: shooter.side.opponent, index: outcome == .saved ? 0 : 3)
-        }
-        return nil
-    }
-
-    private func playerLean(player: MatchPlayerRef, play: TimelineVisualPlay) -> Double {
-        guard !reduceMotion else { return 0 }
-        let direction = player.side == .home ? 1.0 : -1.0
-        if carrier(for: play) == player {
-            return direction * sin(play.localProgress * .pi) * 9
-        }
-        if pressingPlayer(for: play) == player {
-            return -direction * sin(play.localProgress * .pi) * 12
-        }
-        return 0
-    }
-
-    private func playerDepth(for player: MatchPlayerRef, play: TimelineVisualPlay) -> Double {
-        if carrier(for: play) == player { return 7 }
-        if pressingPlayer(for: play) == player { return 6 }
-        if receiver(for: play) == player { return 5 }
-        return 2
-    }
-
-    private func stepped(_ value: Double) -> Double {
-        if value < 0.34 { return 0 }
-        if value < 0.74 { return 0.55 }
-        return 1
-    }
-
-    private func smooth(_ value: Double) -> Double {
-        let t = min(1, max(0, value))
-        return t * t * (3 - 2 * t)
-    }
-
-    private func quadraticBezier(
-        from start: PitchPoint,
-        control: PitchPoint,
-        to end: PitchPoint,
-        progress: Double
-    ) -> PitchPoint {
-        let inverse = 1 - progress
-        return PitchPoint(
-            x: inverse * inverse * start.x + 2 * inverse * progress * control.x + progress * progress * end.x,
-            y: inverse * inverse * start.y + 2 * inverse * progress * control.y + progress * progress * end.y
-        )
-    }
-
-    private func normalized(_ point: PitchPoint) -> CGPoint {
-        CGPoint(x: point.x, y: point.y)
-    }
-
-    private func scaled(_ point: CGPoint, in size: CGSize) -> CGPoint {
-        CGPoint(x: point.x * size.width, y: point.y * size.height)
-    }
-
-    private func feedbackPosition(for point: CGPoint, in size: CGSize) -> CGPoint {
-        CGPoint(
-            x: min(size.width * 0.86, max(size.width * 0.14, point.x * size.width)),
-            y: min(size.height * 0.80, max(size.height * 0.20, point.y * size.height))
-        )
-    }
-
-    private func jerseyStyle(for team: Team?, fallback: (String, String), opponent: Team?) -> JerseyStyle {
-        let colors = team?.home.colors ?? [fallback.0, fallback.1]
-        let opponentColors = opponent?.home.colors ?? []
-        let primary = colors.first ?? fallback.0
-        let secondary = colors.dropFirst().first ?? fallback.1
-        let resolvedPrimary = colorsAreTooClose(primary, opponentColors.first) && colors.count > 1 ? secondary : primary
-        let resolvedSecondary = resolvedPrimary == secondary ? primary : secondary
-        return JerseyStyle(primaryHex: resolvedPrimary, secondaryHex: resolvedSecondary)
-    }
-
-    private func colorsAreTooClose(_ first: String, _ second: String?) -> Bool {
-        guard let second else { return false }
-        let a = RGB(hex: first)
-        let b = RGB(hex: second)
-        let distance = abs(a.r - b.r) + abs(a.g - b.g) + abs(a.b - b.b)
-        return distance < 0.42
-    }
-}
-
-private struct PlayerDot: View {
-    let style: JerseyStyle
-    let label: String
-    let isActive: Bool
-    let isReceiver: Bool
-    let isPressing: Bool
-    let isGoalkeeper: Bool
-
-    var body: some View {
-        ZStack {
-            if isActive {
-                MiniJerseyShape()
-                    .stroke(Color.white.opacity(0.84), lineWidth: 2.4)
-                    .frame(width: isGoalkeeper ? 31 : 30, height: isGoalkeeper ? 35 : 34)
-                    .shadow(color: Color.white.opacity(0.38), radius: 3)
-            }
-            if isReceiver && !isActive {
-                MiniJerseyShape()
-                    .stroke(
-                        Color(hex: "#FFC93C").opacity(0.86),
-                        style: StrokeStyle(lineWidth: 2, dash: [4, 3])
-                    )
-                    .frame(width: isGoalkeeper ? 31 : 30, height: isGoalkeeper ? 35 : 34)
-            }
-            if isPressing && !isActive {
-                MiniJerseyShape()
-                    .stroke(Color(hex: "#FF7B3D").opacity(0.92), lineWidth: 2.4)
-                    .frame(width: isGoalkeeper ? 31 : 30, height: isGoalkeeper ? 35 : 34)
-            }
-            MiniJerseyShape()
-                .fill(style.primary)
-            Rectangle()
-                .fill(style.secondary)
-                .frame(width: isGoalkeeper ? 11 : 9)
-                .rotationEffect(.degrees(-15))
-                .offset(x: 1)
-                .clipShape(MiniJerseyShape())
-            Capsule()
-                .fill(style.secondary)
-                .frame(width: 9, height: 3)
-                .offset(y: -10)
-            MiniJerseyShape()
-                .stroke(style.border, lineWidth: 1.4)
-            Text(label)
-                .font(.system(size: isGoalkeeper ? 12.5 : 12, weight: .black, design: .rounded))
-                .monospacedDigit()
-                .foregroundColor(style.text)
-                .shadow(color: style.textShadow, radius: 0.7, x: 0, y: 1)
-                .offset(y: 1)
-        }
-        .frame(width: isGoalkeeper ? 25 : 24, height: isGoalkeeper ? 29 : 27)
-        .shadow(color: Color.black.opacity(0.26), radius: 3, x: 0, y: 2)
-    }
-}
-
-private struct MiniJerseyShape: Shape {
-    func path(in rect: CGRect) -> Path {
-        let width = rect.width
-        let height = rect.height
-        var path = Path()
-
-        path.move(to: CGPoint(x: width * 0.27, y: height * 0.05))
-        path.addLine(to: CGPoint(x: width * 0.73, y: height * 0.05))
-        path.addLine(to: CGPoint(x: width * 0.88, y: height * 0.18))
-        path.addLine(to: CGPoint(x: width, y: height * 0.32))
-        path.addLine(to: CGPoint(x: width * 0.88, y: height * 0.50))
-        path.addLine(to: CGPoint(x: width * 0.76, y: height * 0.42))
-        path.addLine(to: CGPoint(x: width * 0.76, y: height))
-        path.addLine(to: CGPoint(x: width * 0.24, y: height))
-        path.addLine(to: CGPoint(x: width * 0.24, y: height * 0.42))
-        path.addLine(to: CGPoint(x: width * 0.12, y: height * 0.50))
-        path.addLine(to: CGPoint(x: 0, y: height * 0.32))
-        path.addLine(to: CGPoint(x: width * 0.12, y: height * 0.18))
-        path.closeSubpath()
-        return path
-    }
-}
-
-private struct TimelineVisualPlay {
-    let beat: MatchBeat
-    let localProgress: Double
-    let ball: CGPoint
-    let ballStart: CGPoint
-    let homePositions: [CGPoint]
-    let awayPositions: [CGPoint]
-    let ballOpacity: Double
-    let showsTrail: Bool
-}
-
 private struct BallTrail: Shape {
     let from: CGPoint
     let to: CGPoint
@@ -2436,48 +2155,6 @@ private struct FootballView: View {
     }
 }
 
-private struct ShotBurst: View {
-    let side: MatchSide
-    let outcome: MatchShotOutcome
-
-    var body: some View {
-        Image(systemName: side == .home ? "arrow.right.circle.fill" : "arrow.left.circle.fill")
-            .font(.system(size: 34, weight: .black))
-            .foregroundColor((outcome == .saved || outcome == .blocked) ? Color.white : Color(hex: "#FFC93C"))
-            .shadow(color: Color.black.opacity(0.3), radius: 4, x: 0, y: 3)
-    }
-}
-
-private struct SaveFlash: View {
-    var body: some View {
-        Image(systemName: "hand.raised.fill")
-            .font(.system(size: 34, weight: .black))
-            .foregroundColor(.white)
-            .padding(10)
-            .background(Circle().fill(Color(hex: "#263645").opacity(0.76)))
-            .shadow(color: Color.black.opacity(0.32), radius: 6, x: 0, y: 4)
-    }
-}
-
-private struct ShotOutcomeFlash: View {
-    let label: String
-    let systemImage: String
-    let color: Color
-
-    var body: some View {
-        HStack(spacing: 7) {
-            Image(systemName: systemImage)
-            Text(label)
-        }
-        .font(.custom("Nunito-Black", size: 17))
-        .foregroundColor(color)
-        .padding(.horizontal, 14)
-        .frame(height: 42)
-        .background(Capsule().fill(Color(hex: "#263645").opacity(0.88)))
-        .overlay(Capsule().stroke(color.opacity(0.72), lineWidth: 2))
-        .shadow(color: Color.black.opacity(0.30), radius: 6, x: 0, y: 4)
-    }
-}
 
 private struct JerseyStyle {
     let primaryHex: String
@@ -2516,28 +2193,6 @@ private func luminance(_ hex: String) -> Double {
     return 0.2126 * rgb.r + 0.7152 * rgb.g + 0.0722 * rgb.b
 }
 
-private struct SoccerPitchLines: Shape {
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        path.addRect(rect)
-        path.move(to: CGPoint(x: rect.midX, y: rect.minY))
-        path.addLine(to: CGPoint(x: rect.midX, y: rect.maxY))
-
-        let centerCircle = CGRect(
-            x: rect.midX - rect.width * 0.075,
-            y: rect.midY - rect.height * 0.15,
-            width: rect.width * 0.15,
-            height: rect.height * 0.3
-        )
-        path.addEllipse(in: centerCircle)
-
-        path.addRect(CGRect(x: rect.minX, y: rect.midY - rect.height * 0.23, width: rect.width * 0.16, height: rect.height * 0.46))
-        path.addRect(CGRect(x: rect.maxX - rect.width * 0.16, y: rect.midY - rect.height * 0.23, width: rect.width * 0.16, height: rect.height * 0.46))
-        path.addRect(CGRect(x: rect.minX - rect.width * 0.015, y: rect.midY - rect.height * 0.09, width: rect.width * 0.015, height: rect.height * 0.18))
-        path.addRect(CGRect(x: rect.maxX, y: rect.midY - rect.height * 0.09, width: rect.width * 0.015, height: rect.height * 0.18))
-        return path
-    }
-}
 
 extension Team {
     var matchQualityScore: Double {
@@ -4085,47 +3740,62 @@ private struct WCChampionCover: View {
     }
 }
 
-/// Resolves a World Cup fixture team to a full `Team` (kit colors + crest) so it can drive
-/// the dark bracket UI and the animated match simulation. Uses the real selección data from
-/// `CAMI_DATA` when it exists, otherwise builds a synthetic team from national colors.
-private func worldCupTeam(for fixtureTeam: FixtureTeam) -> Team {
+/// Uses the collection when available, then an explicit home/away pair. Flag
+/// colors and automatic color inversion are not football-kit specifications.
+/// These are stylized identities; edition/source gaps are recorded in the kit audit.
+func worldCupTeam(for fixtureTeam: FixtureTeam) -> Team {
     let selId = "sel_\(fixtureTeam.id)"
     if let real = CAMI_DATA.team(countryId: "wc26", teamId: selId) {
         return real
     }
-    let colors = worldCupKitColors[fixtureTeam.id] ?? ["#5B6B7B", "#FFFFFF"]
-    let secondary = colors.count > 1 ? colors[1] : "#FFFFFF"
+    let neutral = Kit(pattern: .solid, colors: ["#AEB4BA", "#FFFFFF"])
+    let kits = worldCupKits[fixtureTeam.id] ?? (home: neutral, away: neutral)
     return Team(
         id: selId,
         name: fixtureTeam.name,
         short: fixtureTeam.short,
-        home: Kit(pattern: .solid, colors: colors),
-        away: Kit(pattern: .solid, colors: [secondary, colors[0]]),
-        crest: Crest(shape: .shield, text: fixtureTeam.short, colors: colors)
+        home: kits.home,
+        away: kits.away,
+        crest: Crest(shape: .shield, text: fixtureTeam.short, colors: kits.home.colors)
     )
 }
 
-/// National kit colors [primary, secondary] for World Cup teams without a dedicated entry in
-/// `CAMI_DATA`, so the simulated pitch and crests still show the right colors.
-private let worldCupKitColors: [String: [String]] = [
-    "south_africa": ["#007749", "#FFB81C"],
-    "czechia": ["#D7141A", "#FFFFFF"],
-    "switzerland": ["#DA291C", "#FFFFFF"],
-    "qatar": ["#8A1538", "#FFFFFF"],
-    "morocco": ["#C1272D", "#006233"],
-    "haiti": ["#00209F", "#D21034"],
-    "scotland": ["#1B3A6B", "#FFFFFF"],
-    "paraguay": ["#D52B1E", "#FFFFFF"],
-    "turkiye": ["#E30A17", "#FFFFFF"],
-    "ivory_coast": ["#FF7900", "#FFFFFF"],
-    "tunisia": ["#E70013", "#FFFFFF"],
-    "sweden": ["#FECC00", "#005293"],
-    "iran": ["#FFFFFF", "#239F40"],
-    "new_zealand": ["#FFFFFF", "#1A1A1A"],
-    "senegal": ["#FFFFFF", "#00853F"],
-    "norway": ["#BA0C2F", "#00205B"],
-    "iraq": ["#007A3D", "#FFFFFF"],
-    "uzbekistan": ["#0099B5", "#FFFFFF"],
-    "dr_congo": ["#007FFF", "#FCD116"],
-    "panama": ["#D21034", "#FFFFFF"]
+/// All 35 playable selections outside the album, including random-draw extras.
+/// No album entries or progress keys are added. Source: kit-audit-2026-09-07.md.
+let worldCupKits: [String: (home: Kit, away: Kit)] = [
+    "south_africa": (Kit(pattern: .solid, colors: ["#FFB81C", "#007749"]), Kit(pattern: .solid, colors: ["#007749", "#FFB81C"])),
+    "czechia": (Kit(pattern: .solid, colors: ["#D7141A", "#FFFFFF"]), Kit(pattern: .solid, colors: ["#FFFFFF", "#184783"])),
+    "switzerland": (Kit(pattern: .solid, colors: ["#DA291C", "#FFFFFF"]), Kit(pattern: .solid, colors: ["#FFFFFF", "#DA291C"])),
+    "qatar": (Kit(pattern: .solid, colors: ["#8A1538", "#FFFFFF"]), Kit(pattern: .solid, colors: ["#FFFFFF", "#8A1538"])),
+    "morocco": (Kit(pattern: .solid, colors: ["#C1272D", "#006233"]), Kit(pattern: .solid, colors: ["#FFFFFF", "#006233", "#C1272D"])),
+    "haiti": (Kit(pattern: .solid, colors: ["#00209F", "#D21034"]), Kit(pattern: .solid, colors: ["#FFFFFF", "#00209F", "#D21034"])),
+    "scotland": (Kit(pattern: .solid, colors: ["#172B4D", "#FFFFFF"]), Kit(pattern: .solid, colors: ["#F17878", "#FFFFFF"])),
+    "paraguay": (Kit(pattern: .stripesV, colors: ["#FFFFFF", "#D52B1E"]), Kit(pattern: .solid, colors: ["#15294B", "#55B7D9"])),
+    "turkiye": (Kit(pattern: .sashH, colors: ["#FFFFFF", "#E30A17"]), Kit(pattern: .solid, colors: ["#E30A17", "#FFFFFF"])),
+    "ivory_coast": (Kit(pattern: .solid, colors: ["#FF7900", "#007A45"]), Kit(pattern: .solid, colors: ["#FFFFFF", "#007A45", "#FF7900"])),
+    "tunisia": (Kit(pattern: .solid, colors: ["#FFFFFF", "#E70013"]), Kit(pattern: .solid, colors: ["#E70013", "#FFFFFF"])),
+    "sweden": (Kit(pattern: .solid, colors: ["#FECC00", "#005293"]), Kit(pattern: .solid, colors: ["#005293", "#FECC00"])),
+    "iran": (Kit(pattern: .solid, colors: ["#FFFFFF", "#239F40", "#DA291C"]), Kit(pattern: .solid, colors: ["#DA291C", "#FFFFFF"])),
+    "new_zealand": (Kit(pattern: .solid, colors: ["#FFFFFF", "#1A1A1A"]), Kit(pattern: .solid, colors: ["#1A1A1A", "#FFFFFF"])),
+    "senegal": (Kit(pattern: .solid, colors: ["#FFFFFF", "#00853F"]), Kit(pattern: .solid, colors: ["#00853F", "#FFCE00"])),
+    "norway": (Kit(pattern: .solid, colors: ["#BA0C2F", "#00205B"]), Kit(pattern: .solid, colors: ["#FFFFFF", "#00205B"])),
+    "iraq": (Kit(pattern: .solid, colors: ["#FFFFFF", "#007A3D"]), Kit(pattern: .solid, colors: ["#007A3D", "#FFFFFF"])),
+    "uzbekistan": (Kit(pattern: .solid, colors: ["#146EB4", "#FFFFFF"]), Kit(pattern: .solid, colors: ["#FFFFFF", "#146EB4"])),
+    "dr_congo": (Kit(pattern: .solid, colors: ["#007FFF", "#FCD116"]), Kit(pattern: .solid, colors: ["#FFFFFF", "#007FFF", "#FCD116"])),
+    "panama": (Kit(pattern: .solid, colors: ["#D21034", "#FFFFFF"]), Kit(pattern: .solid, colors: ["#FFFFFF", "#142B50"])),
+    "chile": (Kit(pattern: .solid, colors: ["#D52B1E", "#FFFFFF"]), Kit(pattern: .solid, colors: ["#FFFFFF", "#1E355E"])),
+    "peru": (Kit(pattern: .sashD, colors: ["#FFFFFF", "#D91023"]), Kit(pattern: .solid, colors: ["#111111", "#D91023"])),
+    "venezuela": (Kit(pattern: .solid, colors: ["#6B1939", "#D5B884"]), Kit(pattern: .solid, colors: ["#FFFFFF", "#6B1939"])),
+    "bolivia": (Kit(pattern: .solid, colors: ["#007A3D", "#FFFFFF"]), Kit(pattern: .solid, colors: ["#FFFFFF", "#007A3D"])),
+    "nigeria": (Kit(pattern: .solid, colors: ["#008751", "#154A38"]), Kit(pattern: .solid, colors: ["#FFFFFF", "#008751"])),
+    "cameroon": (Kit(pattern: .solid, colors: ["#007A5E", "#FCD116", "#CE1126"]), Kit(pattern: .solid, colors: ["#FFFFFF", "#007A5E", "#CE1126"])),
+    "mali": (Kit(pattern: .solid, colors: ["#FFFFFF", "#14A24A", "#FCD116"]), Kit(pattern: .solid, colors: ["#14A24A", "#FCD116"])),
+    "poland": (Kit(pattern: .solid, colors: ["#FFFFFF", "#DC143C"]), Kit(pattern: .solid, colors: ["#DC143C", "#FFFFFF"])),
+    "denmark": (Kit(pattern: .solid, colors: ["#C8102E", "#FFFFFF"]), Kit(pattern: .solid, colors: ["#FFFFFF", "#C8102E"])),
+    "serbia": (Kit(pattern: .solid, colors: ["#C6363C", "#FFFFFF"]), Kit(pattern: .solid, colors: ["#FFFFFF", "#244680"])),
+    "ukraine": (Kit(pattern: .solid, colors: ["#FFDD00", "#0057B7"]), Kit(pattern: .solid, colors: ["#0057B7", "#FFDD00"])),
+    "greece": (Kit(pattern: .solid, colors: ["#FFFFFF", "#005BAA"]), Kit(pattern: .solid, colors: ["#005BAA", "#FFFFFF"])),
+    "wales": (Kit(pattern: .solid, colors: ["#C8102E", "#006A44"]), Kit(pattern: .solid, colors: ["#F5F2E8", "#006A44"])),
+    "ireland": (Kit(pattern: .solid, colors: ["#007A49", "#FFFFFF", "#FF883E"]), Kit(pattern: .solid, colors: ["#FFFFFF", "#152D44", "#A8C9A3"])),
+    "slovenia": (Kit(pattern: .chevron, colors: ["#FFFFFF", "#1558B0"]), Kit(pattern: .chevron, colors: ["#3595D2", "#1558B0", "#FFFFFF"]))
 ]

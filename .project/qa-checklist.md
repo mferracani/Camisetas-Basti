@@ -1,5 +1,20 @@
 # QA Checklist — Camisetas Basti
 
+## Incremento: camisetas y pelota parada — 2026-09-07
+
+- [x] 139 equipos jugables / 278 kits cubiertos por selección explícita; todas las combinaciones conservan un kit original, sin recolor sintético.
+- [x] Tests de rayas, damero, bandas, mitades, mangas, V y tres colores; referencias erróneas desasociadas sin borrar assets ni progreso.
+- [x] 64 unit tests sin fallos: resultado determinista, continuidad, preparación/barrera, penal desde punto correcto, arquero en línea y mismo impacto en movimiento normal/reducido.
+- [x] XCUITest de tiro libre y penal en preparación/remate/desenlace, con y sin Reducir movimiento.
+- [x] XCUITest de gol y marcador con Reducir movimiento.
+- [x] XCUITest de tanda: pelota en vuelo antes del gol, desenlace y cierre a Home.
+- [x] Inspección real en Simulator iPad Pro 13: barrera y penal; grabación de dos jugadas normales en `build/match-kits-set-pieces/tiro-libre-y-penal.mp4`.
+- [x] Reejecución final del partido completo desde fixture y persistencia del resultado: MEX 0–RSA 1, cierre y fixture no rejugable; 126.782 segundos.
+- [x] Build Release final de este incremento (generic iOS Simulator, sin firma).
+- [ ] Validación en iPad físico con Basti, FPS y autenticación de temporada de todas las camisetas heredadas.
+
+Cuatro pruebas de interfaz focales pasaron: tres de presentación (100.675 segundos) y una del partido completo (126.782 segundos). El primer intento que informó cero tests se descarta; los resultados válidos están en `ui-verified.xcresult` y `final-tests.xcresult`. Límites/fuentes: `match-kits-set-pieces-2026-09-07.md` y `kit-audit-2026-09-07.md`.
+
 **Fecha:** 2026-04-29
 **QA Engineer:** Agent Kit QA
 **Plataforma:** iOS 16+ / iPadOS 16+ / macOS 13+
@@ -227,6 +242,20 @@ xcodebuild test -scheme CamisetasBasti -destination 'platform=iOS Simulator,name
 **Veredicto provisional:** ⬜ **NO APROBADO para submit** — faltan assets esenciales (fuentes, sonidos, icono, launch screen).
 
 **Una vez agregados los assets:** Ejecutar tests y completar checklist manual.
+
+## Iteración de partidos — 2026-09-07
+
+- [x] Debug y Release para Simulator compilan; 48 tests unitarios pasan en iPad (A16), iOS 26.4.
+- [x] Continuidad de pelota al soltar/recibir y entre beats; separación de 22 jugadores; altura y estela coherentes.
+- [x] Gol termina dentro de la red y conserva continuidad con la reposición.
+- [x] Primer remate dentro del primer 30% sobre 24 semillas, sin cambiar la duración total.
+- [x] XCUITest de navegación normal, partido completo, cierre y guardado del marcador en zona.
+- [x] XCUITest de gol antes/después de impacto y mismo resultado con Reduce Motion.
+- [x] Revisión visual de jugadores, estadio y festejo; captura adicional en iPad de 13 pulgadas.
+- [ ] Validación con Basti y medición de rendimiento en dispositivo físico.
+- [ ] Pendiente previo: prueba completa de avance de llave en eliminación directa y VoiceOver manual.
+
+Evidencia y comandos: `.project/match-experience-2026-09-07.md`. No se ejecutó toda la suite UI heredada. El bloqueo de pantalla de la Mac limitó el control manual final de Simulator; los XCUITests sí completaron. Esta verificación no equivale a aprobación de submit ni publicación.
 
 ---
 

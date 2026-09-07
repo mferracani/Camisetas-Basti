@@ -1,5 +1,11 @@
 # Security Review — Camisetas Basti
 
+## Revisión incremental: camisetas y pelota parada — 2026-09-07
+
+Alcance: cambios de catálogo, renderer compartido, microeventos de tiros libres/penales y harness Debug. Revisión estática del diff: sin conexiones de red, permisos nuevos, analytics, dependencias ni persistencia nueva. Las fuentes web quedan en documentación de desarrollo, no como enlaces de navegación infantil. Los PNG mal asociados dejan de referenciarse, pero no se borran. El harness reproducible queda bajo `#if DEBUG` y no registra datos del usuario.
+
+Sin hallazgos bloqueantes en este incremento. Esto no es una certificación legal COPPA, aprobación de App Store ni autorización de uso comercial de marcas/escudos; tampoco revalida todos los veredictos históricos del documento.
+
 **Fecha:** 2026-04-29
 **Revisor:** Security Reviewer (Agent Kit)
 **Scope:** Código fuente Swift, modelo de datos, dependencias, permisos
@@ -278,3 +284,11 @@ Próximo agente: **QA Engineer**
 - La cancha decorativa se oculta a VoiceOver y el relato expone minuto, marcador y evento como una sola actualización accesible.
 
 No se requieren cambios de privacidad ni declaraciones nuevas en App Store Connect por esta mejora.
+
+## Delta de presentación — 2026-09-07
+
+Revisión estática acotada al diff de partidos (incluidos archivos nuevos), sin reevaluación legal ni de distribución. No se agregan red, permisos, identificadores, analytics ni persistencia. El renderer Canvas y su muestreador son locales; los argumentos de QA están detrás de `#if DEBUG`. No se alteran datos de progreso.
+
+La revisión independiente detectó y se corrigieron dos problemas visuales: gol que finalizaba antes de la línea y alternativas de camisetas que aún podían confundirse. Sin otros hallazgos accionables en el alcance revisado. Las afirmaciones históricas de seis jugadores en la revisión v2 corresponden a la versión anterior: el estado vigente utiliza once por equipo.
+
+Handoff: revisión del usuario de la experiencia local, y proceso habitual de release si solicita publicarla. Este delta no aprueba por sí mismo merge ni submit.

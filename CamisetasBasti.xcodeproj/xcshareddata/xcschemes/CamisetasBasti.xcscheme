@@ -49,6 +49,17 @@
                ReferencedContainer = "container:CamisetasBasti.xcodeproj">
             </BuildableReference>
          </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "CE807A9223C9F062E1846B20"
+               BuildableName = "CamisetasBastiUITests.xctest"
+               BlueprintName = "CamisetasBastiUITests"
+               ReferencedContainer = "container:CamisetasBasti.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction

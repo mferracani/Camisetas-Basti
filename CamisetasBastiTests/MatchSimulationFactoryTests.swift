@@ -78,6 +78,17 @@ final class MatchSimulationFactoryTests: XCTestCase {
         }
     }
 
+    func testEveryMatchReachesAFirstShotWithinTheOpeningThirtyPercent() throws {
+        for seed in 0..<24 {
+            let simulation = try presentationSimulation(seed: UInt64(seed))
+            let firstShot = try XCTUnwrap(simulation.beats.first { $0.action.isShot })
+            XCTAssertLessThanOrEqual(
+                firstShot.startProgress, 0.30,
+                "Seed \(seed) leaves the opening without a shot until \(firstShot.startProgress * 100)%"
+            )
+        }
+    }
+
     func testOpenPlayConnectsDefenceMidfieldAndAttack() throws {
         let argentina = try XCTUnwrap(CAMI_DATA.team(countryId: "wc26", teamId: "sel_argentina"))
         let curacao = try XCTUnwrap(CAMI_DATA.team(countryId: "wc26", teamId: "sel_curacao"))
@@ -88,9 +99,9 @@ final class MatchSimulationFactoryTests: XCTestCase {
             switch beat.action {
             case let .kickoff(from, to), let .pass(from, to), let .cross(from, to), let .restart(from, to, _):
                 return [from, to].filter { $0.side == .home }.map(\.index)
-            case let .carry(player), let .shot(player, _):
+            case let .carry(player), let .shot(player, _), let .setPieceSetup(player, _):
                 return player.side == .home ? [player.index] : []
-            case let .pressure(carrier, defender), let .duel(carrier, defender, _), let .tackle(carrier, defender):
+            case let .pressure(carrier, defender), let .duel(carrier, defender, _), let .tackle(carrier, defender), let .foul(carrier, defender):
                 return [carrier, defender].filter { $0.side == .home }.map(\.index)
             case let .interception(passer, intendedReceiver, defender):
                 return [passer, intendedReceiver, defender].filter { $0.side == .home }.map(\.index)
@@ -249,6 +260,8 @@ final class MatchSimulationFactoryTests: XCTestCase {
         let beats = MatchSimulationFactory.makeSimulation(home: argentina, away: curacao, rng: &rng).beats
 
         for beat in beats {
+            // At a dead ball the taker starts a run-up behind the stationary ball.
+            if beat.setPiece != nil && beat.action.isShot { continue }
             guard let owner = beat.action.ballOwner(at: 0) else { continue }
             let positions = owner.side == .home ? beat.homeStartPositions : beat.awayStartPositions
             XCTAssertLessThanOrEqual(
@@ -257,6 +270,339 @@ final class MatchSimulationFactoryTests: XCTestCase {
                 "The controlled action starts outside its visual touch radius at beat \(beat.id), action \(beat.action)"
             )
         }
+    }
+
+    func testPresentationBallRemainsContinuousWhenReleasedAndReceived() throws {
+        let simulation = try presentationSimulation(seed: 73)
+        var checkedActions = Set<String>()
+
+        for beat in simulation.beats {
+            let touchTimes: [Double]
+            switch beat.action {
+            case .pass:
+                checkedActions.insert("pass")
+                touchTimes = [0.22, 0.84]
+            case .cross:
+                checkedActions.insert("cross")
+                touchTimes = [0.16, 0.84]
+            case .tackle, .interception:
+                checkedActions.insert("recovery")
+                touchTimes = [0.28, 0.70]
+            case .shot:
+                checkedActions.insert("shot")
+                touchTimes = [0.26, MatchPresentation.shotImpactProgress]
+            default:
+                continue
+            }
+
+            for local in touchTimes {
+                let before = try presentationFrame(beat, local: local - 0.000_001)
+                let after = try presentationFrame(beat, local: local + 0.000_001)
+                XCTAssertLessThan(
+                    before.ball.distance(to: after.ball), 0.000_5,
+                    "Visible ball jumps at touch \(local), beat \(beat.id): \(beat.action)"
+                )
+            }
+        }
+        XCTAssertEqual(checkedActions, Set(["pass", "cross", "recovery", "shot"]))
+    }
+
+    func testPresentationConnectsBallAndPlayersAcrossBeatBoundaries() throws {
+        for seed in 0..<8 {
+            let beats = try presentationSimulation(seed: UInt64(seed)).beats
+            for (previous, next) in zip(beats, beats.dropFirst()) {
+                let end = try presentationFrame(previous, local: 1)
+                let start = try presentationFrame(next, local: 0)
+                XCTAssertLessThan(end.ball.distance(to: start.ball), 0.000_001,
+                                  "Ball jumps between beats \(previous.id) and \(next.id)")
+                for (before, after) in zip(end.homePositions + end.awayPositions,
+                                           start.homePositions + start.awayPositions) {
+                    XCTAssertLessThan(before.distance(to: after), 0.000_001)
+                }
+            }
+        }
+    }
+
+    func testPresentationPreservesTwentyTwoReadablePlayersWhileMoving() throws {
+        for seed in 10..<14 {
+            let beats = try presentationSimulation(seed: UInt64(seed)).beats
+            for beat in beats {
+                for local in [0.0, 0.16, 0.28, 0.42, 0.58, 0.70, 0.84, 1.0] {
+                    let frame = try presentationFrame(beat, local: local)
+                    for positions in [frame.homePositions, frame.awayPositions] {
+                        XCTAssertEqual(positions.count, 11)
+                        XCTAssertGreaterThanOrEqual(minimumVisualDistance(in: positions),
+                                                    MatchPitchLayout.minimumVisualDistance - 0.000_001)
+                        for (index, point) in positions.enumerated() {
+                            let isPenaltyKeeper = index == 0 && beat.setPiece == .penalty
+                            XCTAssertTrue((isPenaltyKeeper ? 0.0...1.0 : 0.04...0.96).contains(point.x))
+                            XCTAssertTrue((0.16...0.84).contains(point.y))
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    func testPresentationCrossHasHeightAndTrailFollowsTheVisibleBall() throws {
+        let beats = try presentationSimulation(seed: 73).beats
+        let cross = try XCTUnwrap(beats.first { $0.action.isCross })
+        let midFlight = try presentationFrame(cross, local: 0.5)
+        XCTAssertGreaterThan(midFlight.ballHeight, 0)
+        XCTAssertFalse(midFlight.trail.isEmpty)
+        XCTAssertLessThanOrEqual(midFlight.trail.count, 7)
+        XCTAssertEqual(midFlight.trail.last, midFlight.ball)
+        XCTAssertEqual(try presentationFrame(cross, local: 0).ballHeight, 0)
+        XCTAssertEqual(try presentationFrame(cross, local: 1).ballHeight, 0)
+
+        let receiver = try XCTUnwrap(cross.action.receiver)
+        let received = try presentationFrame(cross, local: 0.90)
+        let positions = receiver.side == .home ? received.homePositions : received.awayPositions
+        XCTAssertEqual(received.ball, positions[receiver.index])
+    }
+
+    func testPresentationResolvesShotsAtTheSharedImpactTime() throws {
+        let beats = try presentationSimulation(seed: 31).beats
+        let goals = beats.filter { $0.action.shotOutcome == .goal }
+        XCTAssertFalse(goals.isEmpty)
+        for beat in goals {
+            let before = try presentationFrame(beat, local: MatchPresentation.shotImpactProgress - 0.01)
+            let impact = try presentationFrame(beat, local: MatchPresentation.shotImpactProgress)
+            XCTAssertGreaterThan(before.ball.distance(to: beat.ballEnd), 0.000_001)
+            XCTAssertEqual(impact.ball.x, beat.ballEnd.x, accuracy: 0.000_001)
+            XCTAssertEqual(impact.ball.y, beat.ballEnd.y, accuracy: 0.000_001)
+            XCTAssertEqual(impact.ballHeight, 0, accuracy: 0.000_001)
+        }
+    }
+
+    func testGoalsEnterTheNetAndConnectToTheFollowingKickoff() throws {
+        var checkedGoals = 0
+        for seed in 0..<16 {
+            let beats = try presentationSimulation(seed: UInt64(seed)).beats
+            for (shot, next) in zip(beats, beats.dropFirst()) {
+                guard case let .shot(shooter, .goal) = shot.action else { continue }
+                checkedGoals += 1
+                let impact = try presentationFrame(shot, local: MatchPresentation.shotImpactProgress)
+                if shooter.side == .home {
+                    XCTAssertGreaterThan(shot.ballEnd.x, 1, "A home goal must cross the right goal line")
+                    XCTAssertGreaterThan(impact.ball.x, 1)
+                } else {
+                    XCTAssertLessThan(shot.ballEnd.x, 0, "An away goal must cross the left goal line")
+                    XCTAssertLessThan(impact.ball.x, 0)
+                }
+                XCTAssertTrue((-0.04...1.04).contains(shot.ballEnd.x))
+                XCTAssertTrue((0.41...0.59).contains(shot.ballEnd.y), "Goals must enter between the posts")
+                guard case .restart(_, _, .kickoffAfterGoal) = next.action else {
+                    XCTFail("A goal must be followed by a center kickoff")
+                    continue
+                }
+                XCTAssertEqual(shot.ballEnd, next.ballStart)
+                let final = try presentationFrame(shot, local: 1)
+                let restart = try presentationFrame(next, local: 0)
+                XCTAssertLessThan(final.ball.distance(to: restart.ball), 0.000_001)
+                XCTAssertEqual(try presentationFrame(next, local: 0.50).ballOpacity, 0,
+                               "Returning the ball from the net to midfield must be hidden")
+                for position in impact.homePositions + impact.awayPositions {
+                    XCTAssertTrue((0.04...0.96).contains(position.x), "Players stay inside the field during goals")
+                }
+            }
+        }
+        XCTAssertGreaterThan(checkedGoals, 0)
+    }
+
+    func testPresentationReducedMotionKeepsDiscreteResultsAndHidesRestartTransfer() throws {
+        let beats = try presentationSimulation(seed: 31).beats
+        for beat in beats {
+            let final = try presentationFrame(beat, local: 1)
+            let reducedFinal = try presentationFrame(beat, local: 1, reducedMotion: true)
+            XCTAssertEqual(final.ball, reducedFinal.ball)
+            XCTAssertEqual(final.homePositions, reducedFinal.homePositions)
+            XCTAssertEqual(final.awayPositions, reducedFinal.awayPositions)
+            XCTAssertEqual(reducedFinal.ballHeight, 0)
+            XCTAssertTrue(reducedFinal.trail.isEmpty)
+
+            if beat.action.isShot {
+                let before = try presentationFrame(beat, local: 0.77, reducedMotion: true)
+                let impact = try presentationFrame(beat, local: 0.78, reducedMotion: true)
+                XCTAssertLessThan(before.localProgress, MatchPresentation.shotImpactProgress)
+                XCTAssertEqual(impact.localProgress, 1)
+            }
+            if beat.action.isRestart {
+                XCTAssertEqual(try presentationFrame(beat, local: 0.50).ballOpacity, 0)
+                XCTAssertEqual(try presentationFrame(beat, local: 0.50, reducedMotion: true).ballOpacity, 0)
+            }
+        }
+    }
+
+    func testSetPiecesAppearForBothSidesWithoutForcingAPenaltyInEveryMatch() throws {
+        var freeKickSides = Set<MatchSide>()
+        var penaltySides = Set<MatchSide>()
+        var matchesWithPenalty = 0
+        for seed in 0..<48 {
+            let simulation = try presentationSimulation(seed: UInt64(seed))
+            let shots = simulation.beats.filter { $0.action.isShot }
+            let penalties = shots.filter { $0.setPiece == .penalty }
+            if !penalties.isEmpty { matchesWithPenalty += 1 }
+            XCTAssertLessThanOrEqual(penalties.count, 1)
+            for shot in shots {
+                let shooter = try XCTUnwrap(shot.action.primaryPlayer)
+                if shot.setPiece == .freeKick { freeKickSides.insert(shooter.side) }
+                if shot.setPiece == .penalty {
+                    penaltySides.insert(shooter.side)
+                    XCTAssertNotEqual(shot.action.shotOutcome, .blocked)
+                }
+            }
+            XCTAssertEqual(shots.filter { $0.action.shotOutcome == .goal && $0.possessionBefore == .home }.count,
+                           simulation.result.homeGoals)
+            XCTAssertEqual(shots.filter { $0.action.shotOutcome == .goal && $0.possessionBefore == .away }.count,
+                           simulation.result.awayGoals)
+        }
+        XCTAssertEqual(freeKickSides, Set([.home, .away]))
+        XCTAssertEqual(penaltySides, Set([.home, .away]))
+        XCTAssertGreaterThan(matchesWithPenalty, 0)
+        XCTAssertLessThan(matchesWithPenalty, 48)
+    }
+
+    func testEverySetPieceHasAVisibleFoulSetupShotAndValidRestart() throws {
+        var checked = 0
+        for seed in 0..<20 {
+            let beats = try presentationSimulation(seed: UInt64(seed)).beats
+            for index in beats.indices {
+                let setup = beats[index]
+                guard case let .setPieceSetup(taker, kind) = setup.action else { continue }
+                checked += 1
+                XCTAssertGreaterThan(index, 0)
+                XCTAssertLessThan(index + 2, beats.count)
+                guard case let .foul(carrier, defender) = beats[index - 1].action else {
+                    XCTFail("Set piece must visibly follow a foul"); continue
+                }
+                XCTAssertEqual(carrier.side, taker.side)
+                XCTAssertEqual(defender.side, taker.side.opponent)
+                XCTAssertEqual(setup.setPiece, kind)
+                XCTAssertEqual(setup.ballStart, setup.ballEnd)
+                let shot = beats[index + 1]
+                XCTAssertEqual(shot.setPiece, kind)
+                XCTAssertEqual(shot.action.primaryPlayer, taker)
+                XCTAssertTrue(shot.action.isShot)
+                XCTAssertTrue(beats[index + 2].action.isRestart)
+                for local in [0.0, 0.25, 0.5, 0.75, 1.0] {
+                    let frame = try presentationFrame(setup, local: local)
+                    XCTAssertEqual(frame.ball, setup.ballStart, "Ball remains at the foul/penalty spot during setup")
+                    XCTAssertNil(frame.ballOwner)
+                    XCTAssertEqual(frame.ballHeight, 0)
+                    XCTAssertTrue(frame.trail.isEmpty)
+                }
+                let preKick = try presentationFrame(shot, local: 0.20)
+                XCTAssertEqual(preKick.ball, setup.ballEnd)
+                XCTAssertNil(preKick.ballOwner)
+                let reduced = try presentationFrame(shot, local: 0.5, reducedMotion: true)
+                XCTAssertEqual(reduced.ballHeight, 0)
+                XCTAssertTrue(reduced.trail.isEmpty)
+            }
+        }
+        XCTAssertGreaterThan(checked, 0)
+    }
+
+    func testSetPiecesPreserveTheGeneratedResultAndUseTheSharedGoalImpactTime() throws {
+        let home = try XCTUnwrap(CAMI_DATA.team(countryId: "wc26", teamId: "sel_argentina"))
+        let away = try XCTUnwrap(CAMI_DATA.team(countryId: "wc26", teamId: "sel_curacao"))
+        var goalKinds = Set<MatchSetPiece>()
+        for seed in 0..<48 {
+            var resultRNG = SeededGenerator(seed: UInt64(seed))
+            var simulationRNG = SeededGenerator(seed: UInt64(seed))
+            let originalResult = MatchSimulationFactory.makeResult(home: home, away: away, rng: &resultRNG)
+            let simulation = MatchSimulationFactory.makeSimulation(home: home, away: away, rng: &simulationRNG)
+            XCTAssertEqual(simulation.result, originalResult, "Presentation cannot change an already-generated result")
+            for beat in simulation.beats where beat.action.shotOutcome == .goal {
+                guard let kind = beat.setPiece else { continue }
+                goalKinds.insert(kind)
+                let before = try presentationFrame(beat, local: 0.77)
+                let impact = try presentationFrame(beat, local: 0.78)
+                XCTAssertGreaterThan(before.ball.distance(to: beat.ballEnd), 0.000_001)
+                XCTAssertLessThan(impact.ball.distance(to: beat.ballEnd), 0.000_001)
+                let reducedBefore = try presentationFrame(beat, local: 0.77, reducedMotion: true)
+                let reducedImpact = try presentationFrame(beat, local: 0.78, reducedMotion: true)
+                XCTAssertLessThan(reducedBefore.localProgress, MatchPresentation.shotImpactProgress)
+                XCTAssertEqual(reducedImpact.localProgress, 1)
+                XCTAssertEqual(reducedImpact.ball.x, impact.ball.x, accuracy: 0.000_000_01)
+                XCTAssertEqual(reducedImpact.ball.y, impact.ball.y, accuracy: 0.000_000_01)
+            }
+        }
+        XCTAssertEqual(goalKinds, Set([.freeKick, .penalty]))
+    }
+
+    func testPenaltySetupPlacesBallOnSpotAndOtherPlayersOutsideArea() throws {
+        var checked = 0
+        for seed in 0..<40 {
+            let beats = try presentationSimulation(seed: UInt64(seed)).beats
+            for setup in beats where setup.setPiece == .penalty {
+                guard case let .setPieceSetup(taker, _) = setup.action else { continue }
+                checked += 1
+                XCTAssertEqual(setup.ballEnd.x, taker.side == .home ? 0.89 : 0.11, accuracy: 0.000_001)
+                XCTAssertEqual(setup.ballEnd.y, 0.5)
+                let frame = try presentationFrame(setup, local: 1)
+                let opponents = taker.side == .home ? frame.awayPositions : frame.homePositions
+                XCTAssertEqual(opponents[0].x, taker.side == .home ? 1 : 0, accuracy: 0.000_001)
+                XCTAssertEqual(opponents[0].y, 0.5, accuracy: 0.000_001)
+                let shot = try XCTUnwrap(beats.first { $0.id == setup.id + 1 && $0.action.isShot })
+                for local in [0.0, 0.10, 0.20, 0.26] {
+                    let beforeContact = try presentationFrame(shot, local: local)
+                    let defending = taker.side == .home ? beforeContact.awayPositions : beforeContact.homePositions
+                    XCTAssertEqual(defending[0].x, taker.side == .home ? 1 : 0, accuracy: 0.000_000_01,
+                                   "The keeper cannot leave the goal line before the kick")
+                    XCTAssertEqual(defending[0].y, 0.5, accuracy: 0.000_000_01)
+                }
+                for side in [MatchSide.home, .away] {
+                    let positions = side == .home ? frame.homePositions : frame.awayPositions
+                    for index in positions.indices where index != 0 && !(side == taker.side && index == taker.index) {
+                        let attackX = taker.side == .home ? positions[index].x : 1 - positions[index].x
+                        XCTAssertLessThan(attackX, 0.84, "Non-takers wait outside the penalty area")
+                        XCTAssertLessThan(attackX, 0.89, "Non-takers wait behind the ball")
+                        XCTAssertGreaterThanOrEqual(MatchPitchLayout.visualDistance(positions[index], frame.ball), 0.087)
+                    }
+                }
+            }
+        }
+        XCTAssertGreaterThan(checked, 0)
+    }
+
+    func testFreeKickWallStaysTogetherAndBallArcsOverIt() throws {
+        var checked = 0
+        for seed in 0..<16 {
+            let beats = try presentationSimulation(seed: UInt64(seed)).beats
+            for (setup, shot) in zip(beats, beats.dropFirst()) {
+                guard case let .setPieceSetup(taker, .freeKick) = setup.action else { continue }
+                checked += 1
+                let frame = try presentationFrame(setup, local: 1)
+                let opponents = taker.side == .home ? frame.awayPositions : frame.homePositions
+                let wall = Array(opponents[1...3])
+                XCTAssertLessThan(abs(wall[0].x - wall[2].x), 0.000_001)
+                XCTAssertGreaterThanOrEqual(abs(wall[0].x - setup.ballEnd.x), 0.087)
+                XCTAssertGreaterThanOrEqual(minimumVisualDistance(in: wall), MatchPitchLayout.minimumVisualDistance)
+                let flight = try presentationFrame(shot, local: 0.52)
+                XCTAssertGreaterThan(flight.ballHeight, 0.50)
+                XCTAssertFalse(flight.trail.isEmpty)
+                XCTAssertEqual(flight.trail.last, flight.ball)
+                let impact = try presentationFrame(shot, local: MatchPresentation.shotImpactProgress)
+                XCTAssertEqual(impact.ballHeight, 0, accuracy: 0.000_001)
+                if shot.action.shotOutcome == .goal {
+                    XCTAssertLessThan(impact.ball.distance(to: shot.ballEnd), 0.000_001)
+                }
+            }
+        }
+        XCTAssertGreaterThan(checked, 0)
+    }
+
+    private func presentationSimulation(seed: UInt64) throws -> MatchSimulation {
+        let home = try XCTUnwrap(CAMI_DATA.team(countryId: "wc26", teamId: "sel_argentina"))
+        let away = try XCTUnwrap(CAMI_DATA.team(countryId: "wc26", teamId: "sel_curacao"))
+        var rng = SeededGenerator(seed: seed)
+        return MatchSimulationFactory.makeSimulation(home: home, away: away, rng: &rng)
+    }
+
+    private func presentationFrame(_ beat: MatchBeat, local: Double, reducedMotion: Bool = false) throws -> MatchPresentationFrame {
+        let progress = beat.startProgress + (beat.endProgress - beat.startProgress) * local
+        return try XCTUnwrap(MatchPresentation.frame(beats: [beat], progress: progress, reducedMotion: reducedMotion))
     }
 
     private func minimumVisualDistance(in positions: [PitchPoint]) -> Double {

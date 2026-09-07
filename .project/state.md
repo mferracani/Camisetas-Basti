@@ -1,7 +1,7 @@
 # Project State
 
 ## Fase actual
-ready-for-testflight
+match-kits-set-pieces-verified
 
 ## Gate status
 - [x] Gate 1: PRD aprobado
@@ -9,6 +9,10 @@ ready-for-testflight
 - [x] Gate 3: Build completo
 
 ## Decisiones tomadas
+- Verificación del incremento camisetas/pelota parada: 139 equipos jugables y 278 kits con selección explícita sin recolor sintético; tiros libres con barrera y penales dentro del partido; mismo kit en tanda final. 64 unit tests y cuatro XCUITests focales pasaron, builds Debug/Release correctos, sin publicar. Fuentes/gaps de camisetas en `.project/kit-audit-2026-09-07.md`; no implica autenticación de temporada de todas las ediciones.
+- Iteración siguiente 2026-09-07: Mati aprobó la presentación anterior ("quedo muy bien") y pidió verificar colores/diseños reales de todos los equipos y simular tiros libres y penales. Se continúa dentro del modal y timeline aprobados, sin controles nuevos, física 3D ni cambios de resultado/duración. La fidelidad se verifica sobre las ediciones existentes; una actualización de temporada requiere definir la edición, porque el catálogo mezcla assets sin procedencia.
+- Iteración 2026-09-07 solicitada por Mati e implementada: jugadores articulados, movimiento sin frenadas sincronizadas, pelota continua con sombra/altura, estadio y festejos coordinados. Se reutilizaron los gates del flujo aprobado (90–110 segundos, 22 jugadores, cámara fija, offline).
+- Ritmo 2026-09-07: arranque de tres pases por equipo para llegar antes al primer remate, conservando resultados y duración total. Gol detrás de línea y camisetas alternativas con contraste. Verificación: 48 tests unitarios y dos XCUITests focales pasaron; detalle y límites en `.project/match-experience-2026-09-07.md`.
 - La seccion torneos tendra dos modalidades: avance manual actual y nueva simulacion automatica por partido.
 - La simulacion debe funcionar offline y estar optimizada para iPad 10 y 12/13 pulgadas en horizontal.
 - Cada partido simulado durara entre 90 y 110 segundos con resultados plausibles y aleatorios.
@@ -36,6 +40,8 @@ ready-for-testflight
 - Los releases ahora deben usar `scripts/archive-testflight.sh`, que exige `main` limpio y sincronizado y valida los marcadores funcionales del Mundial antes de archivar.
 
 ## Handoffs pendientes
+- Incremento camisetas/pelota parada implementado y verificado localmente; siguiente paso: revisión visual de Mati y decisión sobre temporadas sin referencia/publicación. Video real de dos jugadas y detalles en `.project/match-kits-set-pieces-2026-09-07.md`. No requiere repetir gates del mismo alcance; commit/push sólo cuando se soliciten.
+- Iteración de presentación 2026-09-07: cambios locales verificados en `codex/feat-realistic-match-simulation`, pendientes de revisión del usuario y publicación; sin commit/push/merge. Vista Debug `--match-preview` para revisar en Simulator. Documentación: `.project/match-experience-2026-09-07.md`.
 - Mejora de simulacion v2 publicada en `codex/feat-realistic-match-simulation`; pendiente revision/merge por el usuario. No se hizo merge ni deploy.
 - Antes del proximo TestFlight: smoke manual especifico con `Reduce Motion` y agregar cobertura XCUITest del flujo torneo → partido → cerrar → avance de llave.
 - Build 2 subido a App Store Connect/TestFlight el 2026-06-20.

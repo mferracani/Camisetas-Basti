@@ -37,6 +37,8 @@ enum Pattern: String, Codable, CaseIterable {
     case stripesV = "stripes-v"
     case stripesH = "stripes-h"
     case hoops
+    case checkerboard
+    case chevron
     case splitV = "split-v"
     case splitD = "split-d"
     case sashD = "sash-d"
@@ -45,6 +47,8 @@ enum Pattern: String, Codable, CaseIterable {
     case sashHThick = "sash-h-thick"
     case sashV = "sash-v"
     case sashVFat = "sash-v-fat"
+    case sashVBordered = "sash-v-bordered"
+    case sashVDual = "sash-v-dual"
     case sleevesW = "sleeves-w"
     case splitVBlueClaret = "split-v-blue-claret"
 }
