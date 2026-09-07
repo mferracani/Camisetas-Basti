@@ -8,24 +8,14 @@ Este proyecto usa un framework de **3 Gates y 6 Agentes**. Cada agente tiene un 
 
 ## 3 Gates
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│ GATE 1 — PRD aprobado                                       │
-│   Owner: Product Manager                                    │
-│   Output: PRD.md (YA EXISTE Y ESTÁ APROBADO)               │
-│   Status: ✅ APROBADO                                       │
-├─────────────────────────────────────────────────────────────┤
-│ GATE 2 — UX Spec                                            │
-│   Owner: UX Designer                                        │
-│   Output: .project/ux-spec.md                               │
-│   Status: ⏳ PENDIENTE                                      │
-├─────────────────────────────────────────────────────────────┤
-│ GATE 3 — Build completo                                     │
-│   Secuencia: Local Data → SwiftUI → Security → QA          │
-│   Outputs: código + .project/backend-spec.md, tests, etc.   │
-│   Status: ⏳ PENDIENTE                                      │
-└─────────────────────────────────────────────────────────────┘
-```
+| Gate | Requisito | Owner | Output |
+|---|---|---|---|
+| 1 | PRD | Product Manager | `PRD.md` |
+| 2 | UX Spec | UX Designer | `.project/ux-spec.md` |
+| 3 | Build (Local Data → SwiftUI → Security → QA) | Secuencia de agentes | código + specs/tests |
+
+El estado y las aprobaciones vigentes de cada gate se consultan en
+`.project/state.md`.
 
 ## 6 Agentes
 
@@ -80,10 +70,15 @@ Leé el archivo del agente que necesites en `.claude/agents/` y seguí su system
 
 1. **Leer state antes de actuar.** Siempre. `.project/state.md` es la fuente de verdad.
 2. **No saltar gates.** Si el usuario pide algo de una fase posterior sin cerrar la anterior, avisá y ofrecé cerrar la actual primero.
-3. **Handoffs explícitos.** Al terminar tu turno, decí qué rol debería actuar después.
+3. **Handoffs explícitos.** Dejá documentado qué rol corresponde actuar después.
 4. **Sin drift de rol.** PM no escribe código. SwiftUI Engineer no diseña pantallas.
 5. **State es verdad.** Si hay contradicción entre el state y tu memoria, gana el state.
 6. **Aprobación viene del usuario.** Ningún agente se auto-aprueba.
+
+Las aprobaciones registradas se reutilizan dentro del alcance que cubren. Si una
+tarea solicita completar varias etapas y los gates aplicables están aprobados,
+continuá dentro de ese alcance y dejá el handoff documentado. El handoff no exige
+una nueva invocación del usuario; no crear subagentes sin autorización aplicable.
 
 ---
 
@@ -119,12 +114,10 @@ Leé el archivo del agente que necesites en `.claude/agents/` y seguí su system
     └── ...
 ```
 
-## Próximo paso recomendado
+## Estado y siguiente acción
 
-El **Gate 1 (PRD) está aprobado**. El siguiente paso es el **Gate 2 (UX Spec)**.
-
-**Invocá al UX Designer** para generar `.project/ux-spec.md` con wireframes ASCII adaptados a iPad landscape.
-
-```
-"Actuá como el UX Designer e implementá el ux-spec.md desde el PRD."
-```
+Consultar `.project/state.md` para el estado vigente y la siguiente acción. Este
+`AGENTS.md` define el proceso y los requisitos de aprobación; este índice no duplica
+el estado de las fases. Reutilizar las aprobaciones registradas dentro de su
+alcance. Si falta procedencia de una aprobación necesaria para la acción actual,
+buscar primero la decisión o evidencia asociada.
