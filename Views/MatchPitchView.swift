@@ -31,23 +31,31 @@ struct MatchPitchView: View {
             ZStack {
                 MatchStadium(homeColor: styles.0.primary, awayColor: styles.1.primary)
                 Canvas { context, size in
+                    #if DEBUG
+                    let drawStart = CFAbsoluteTimeGetCurrent()
+                    defer { MatchRenderProbe.shared.record(start: drawStart, progress: progress) }
+                    #endif
                     guard let frame else { return }
                     let painter = MatchPitchPainter(field: field, scale: min(1.15, max(0.72, size.width / 1000)))
                     painter.drawCrowd(in: &context, size: size, time: reduceMotion ? 0 : elapsed, moment: moment,
                                       home: styles.0.primary, away: styles.1.primary)
                     painter.drawGoalNets(in: &context, moment: reduceMotion ? nil : moment)
                     painter.drawSetPiece(in: &context, frame: frame)
-                    for side in [MatchSide.home, .away] {
-                        let positions = side == .home ? frame.homePositions : frame.awayPositions
-                        for index in positions.indices {
-                            painter.drawPlayer(in: &context, player: MatchPlayerRef(side: side, index: index),
-                                               point: positions[index], frame: frame,
-                                               kit: side == .home ? styles.0 : styles.1,
-                                               time: elapsed, duration: duration, moment: moment,
-                                               reduceMotion: reduceMotion)
-                        }
+                    let players = [MatchSide.home, .away].flatMap { side in
+                        (0..<11).map { MatchPlayerRef(side: side, index: $0) }
+                    }.sorted { a, b in
+                        let aY = (a.side == .home ? frame.homePositions : frame.awayPositions)[a.index].y
+                        let bY = (b.side == .home ? frame.homePositions : frame.awayPositions)[b.index].y
+                        return aY < bY
                     }
-                    painter.drawBall(in: &context, frame: frame, time: reduceMotion ? 0 : elapsed)
+                    for player in players {
+                        let positions = player.side == .home ? frame.homePositions : frame.awayPositions
+                        painter.drawPlayer(in: &context, player: player, point: positions[player.index], frame: frame,
+                                           kit: player.side == .home ? styles.0 : styles.1,
+                                           time: elapsed, duration: duration, beats: beats, moment: moment,
+                                           reduceMotion: reduceMotion)
+                    }
+                    painter.drawBall(in: &context, frame: frame)
                     if !reduceMotion, let moment {
                         painter.drawCelebration(in: &context, moment: moment,
                                                 color: moment.side == .home ? styles.0.primary : styles.1.primary)
@@ -116,6 +124,36 @@ struct MatchPitchView: View {
         }
     }
 }
+
+#if DEBUG
+/// Opt-in aggregate render diagnostics, never included in Release or user data.
+private final class MatchRenderProbe: @unchecked Sendable {
+    static let shared = MatchRenderProbe()
+    // All mutable diagnostic state is protected by this lock.
+    private var last: Double?
+    private var intervals: [Double] = []
+    private var drawTimes: [Double] = []
+    private let lock = NSLock()
+
+    func record(start: Double, progress: Double) {
+        guard ProcessInfo.processInfo.arguments.contains("--motion-diagnostics") else { return }
+        lock.lock()
+        defer { lock.unlock() }
+        if let last, start > last, start - last < 1 { intervals.append(start - last) }
+        last = start
+        drawTimes.append(CFAbsoluteTimeGetCurrent() - start)
+        if intervals.count >= 240 {
+            let ordered = intervals.sorted()
+            let fps = Double(intervals.count) / intervals.reduce(0, +)
+            let p95 = ordered[Int(Double(ordered.count - 1) * 0.95)] * 1000
+            let draw = drawTimes.reduce(0, +) / Double(drawTimes.count) * 1000
+            print(String(format: "MATCH-RENDER progress=%.3f fps=%.1f p95-gap-ms=%.1f draw-ms=%.2f", progress, fps, p95, draw))
+            intervals.removeAll(keepingCapacity: true)
+            drawTimes.removeAll(keepingCapacity: true)
+        }
+    }
+}
+#endif
 
 private struct MatchGoalMoment {
     let side: MatchSide
@@ -261,112 +299,173 @@ private struct MatchPitchPainter {
 
     func drawPlayer(in context: inout GraphicsContext, player: MatchPlayerRef, point position: PitchPoint,
                     frame: MatchPresentationFrame, kit: MatchKitStyle, time: Double, duration: Double,
-                    moment: MatchGoalMoment?, reduceMotion: Bool) {
-        let start = player.side == .home ? frame.beat.homeStartPositions : frame.beat.awayStartPositions
-        let end = player.side == .home ? frame.beat.homeEndPositions : frame.beat.awayEndPositions
-        let distance = start[player.index].distance(to: end[player.index])
-        let seconds = max(0.1, (frame.beat.endProgress - frame.beat.startProgress) * duration)
-        let movementActive: Bool
-        if case .setPieceSetup = frame.beat.action {
-            movementActive = frame.localProgress < 0.72
-        } else if frame.beat.setPiece != nil && frame.beat.action.isShot {
-            movementActive = frame.beat.action.primaryPlayer == player ? frame.localProgress < 0.26
-                : (frame.localProgress > 0.26 && frame.localProgress < MatchPresentation.shotImpactProgress)
-        } else {
-            movementActive = true
-        }
-        let running = reduceMotion || !movementActive ? 0 : min(1, distance / seconds * 30)
-        let phase = time * 13 + Double(player.index) * 1.9 + (player.side == .home ? 0 : 1.2)
-        let stride = sin(phase) * running
-        let owner = frame.ballOwner
-        let active = owner == player
+                    beats: [MatchBeat], moment: MatchGoalMoment?, reduceMotion: Bool) {
+        let pose = (player.side == .home ? frame.homeMotion : frame.awayMotion)[player.index]
+        let running = reduceMotion ? 0 : min(1, pose.speed / 0.07)
+        let heading = pose.heading
+        let forward = CGPoint(x: cos(heading), y: sin(heading))
+        let width = 0.72 + 0.28 * abs(sin(heading))
+        let active = frame.ballOwner == player
         let isKeeper = player.index == 0
-        let celebrating = moment?.side == player.side
+        let seconds = max(0.1, (frame.beat.endProgress - frame.beat.startProgress) * duration)
+        let contact = MatchMotionTimeline.contact(frame.beat.action)
+        let kickAge = contact.map { (frame.localProgress - $0) * seconds } ?? 10
+        let isKicker = frame.beat.action.primaryPlayer == player && contact != nil && !reduceMotion
+        let plant = isKicker ? MatchMotionTimeline.smooth((kickAge + 0.27) / 0.12)
+            * (1 - MatchMotionTimeline.smooth((kickAge - 0.09) / 0.25)) : 0
+        let swing: Double = !isKicker ? 0 : kickAge < -0.10
+            ? -MatchMotionTimeline.smooth((kickAge + 0.27) / 0.17)
+            : kickAge < 0.04 ? -1 + 2 * MatchMotionTimeline.smooth((kickAge + 0.10) / 0.14)
+            : 1 - MatchMotionTimeline.smooth((kickAge - 0.04) / 0.28)
         let inWall = frame.beat.setPiece == .freeKick && (1...3).contains(player.index)
-            && frame.beat.action.primaryPlayer?.side != player.side
-        let wallJump = frame.beat.action.isShot && inWall
-            ? max(0, sin(min(1, max(0, (frame.localProgress - 0.24) / 0.43)) * .pi)) * 8 : 0
-        let celebrationJump = celebrating ? max(0, sin((moment?.age ?? 0) * 12 + Double(player.index))) * 6 : 0
+            && frame.beat.action.primaryPlayer?.side != player.side && frame.beat.action.isShot
+        let wallAge = (frame.localProgress - 0.29) * seconds
+        let wallJump = inWall && wallAge > 0 && wallAge < 0.55 ? sin(wallAge / 0.55 * .pi) * 6 : 0
+        let celebrates = moment?.side == player.side && player.index >= 8
+        let celebrationAge = max(0, (moment?.age ?? 0) - Double(10 - player.index) * 0.13)
+        let celebrationJump = celebrates && celebrationAge < 0.7 ? sin(celebrationAge / 0.7 * .pi) * 5 : 0
         let jump = reduceMotion ? 0 : max(wallJump, celebrationJump)
-        let direction = player.side.attackDirection
-        let contact = frame.beat.action.isShot ? 0.26 : frame.beat.action.isCross ? 0.16 : 0.22
-        let kick = frame.beat.action.primaryPlayer == player && (frame.beat.action.isPass || frame.beat.action.isShot)
-            ? max(0, 1 - abs(frame.localProgress - contact) / 0.13) : 0
-        let diving = isKeeper && frame.beat.action.isShot && frame.beat.action.primaryPlayer?.side != player.side
-        let dive = reduceMotion || !diving ? 0 : sin(min(1, max(0, (frame.localProgress - 0.34) / 0.52)) * .pi / 2)
-        let rotation = reduceMotion ? 0 : stride * 0.04 + kick * direction * -0.18
-            + dive * (frame.beat.ballEnd.y < 0.5 ? -0.95 : 0.95)
+
+        // Carry the keeper's landing into the next beat instead of snapping upright.
+        let recentShot = isKeeper ? beats.last(where: {
+            $0.action.isShot && $0.action.primaryPlayer?.side != player.side
+                && $0.startProgress * duration <= time
+        }) : nil
+        var dive = 0.0
+        var diveDirection = 1.0
+        if !reduceMotion, let shot = recentShot, shot.action.shotOutcome != .blocked {
+            let shotSeconds = (shot.endProgress - shot.startProgress) * duration
+            let contactTime = (shot.startProgress + (shot.endProgress - shot.startProgress) * 0.30) * duration
+            let impactTime = (shot.startProgress + (shot.endProgress - shot.startProgress) * MatchPresentation.shotImpactProgress) * duration
+            dive = MatchMotionTimeline.smooth((time - contactTime) / max(0.12, shotSeconds * 0.42))
+                * (1 - MatchMotionTimeline.smooth((time - impactTime - 0.18) / 0.85))
+            diveDirection = shot.ballEnd.y < 0.5 ? -1 : 1
+        }
+        let skin = Color(hex: ["#E8B58C", "#B97850", "#815238", "#F2CCA7"][player.index % 4])
+        let shorts = Color(hex: "#183447")
         var ctx = context
         let center = point(position)
         ctx.translateBy(x: center.x, y: center.y)
         ctx.scaleBy(x: scale, y: scale)
-        ctx.fill(Path(ellipseIn: CGRect(x: -12, y: -1, width: 24, height: 8)), with: .color(.black.opacity(0.23)))
+        // Ground shadows and ownership cues do not bob with the torso.
+        ctx.fill(Path(ellipseIn: CGRect(x: -10 - dive * 4, y: -1, width: 21 + dive * 8, height: 6)),
+                 with: .color(.black.opacity(0.20 - jump * 0.012)))
         if kit.requiresTeamOutline && !isKeeper {
-            // Distinguish the sides without painting a fictional kit.
-            ctx.stroke(Path(ellipseIn: CGRect(x: -14, y: -3, width: 28, height: 11)),
+            ctx.stroke(Path(ellipseIn: CGRect(x: -13, y: -3, width: 26, height: 10)),
                        with: .color(player.side == .home ? .white : Color(hex: "#FFC93C")),
-                       style: StrokeStyle(lineWidth: 1.8, dash: player.side == .home ? [] : [2, 3]))
+                       style: StrokeStyle(lineWidth: 1.4, dash: player.side == .home ? [] : [2, 3]))
         }
         if active || frame.beat.action.receiver == player || frame.beat.action.defender == player {
-            let color: Color = active ? .white : frame.beat.action.defender == player ? Color(hex: "#FF7B3D") : Color(hex: "#FFC93C")
-            ctx.stroke(Path(ellipseIn: CGRect(x: -16, y: -4, width: 32, height: 12)),
-                       with: .color(color.opacity(active ? 0.95 : 0.65)),
-                       style: StrokeStyle(lineWidth: active ? 2.3 : 1.5, dash: active ? [] : [3, 3]))
+            let color: Color = active ? .white : frame.beat.action.defender == player
+                ? Color(hex: "#FF7B3D") : Color(hex: "#FFC93C")
+            ctx.stroke(Path(ellipseIn: CGRect(x: -14, y: -4, width: 28, height: 11)),
+                       with: .color(color.opacity(active ? 0.72 : 0.40)),
+                       style: StrokeStyle(lineWidth: active ? 1.6 : 1.1, dash: active ? [] : [2, 4]))
         }
-        ctx.translateBy(x: 0, y: -jump - abs(stride) * 1.3)
-        ctx.rotate(by: .radians(rotation))
-        let skin = ["#E8B58C", "#B97850", "#815238", "#F2CCA7"][player.index % 4]
-        let limbColor = Color(hex: skin)
-        for left in [true, false] {
-            let side = left ? -1.0 : 1.0
-            let foot = side * stride * 3.8
-            var leg = Path()
-            leg.move(to: CGPoint(x: side * 3.3, y: -8))
-            leg.addLine(to: CGPoint(x: side * 4.3 + (left ? 0 : kick * direction * 8), y: foot))
-            ctx.stroke(leg, with: .color(kit.secondary), style: StrokeStyle(lineWidth: 3.7, lineCap: .round))
-            ctx.fill(Path(roundedRect: CGRect(x: side * 4.3 - 2 + (left ? 0 : kick * direction * 8),
-                                              y: foot - 1, width: 5.5, height: 3.5), cornerRadius: 1.5),
-                     with: .color(Color(hex: "#152B35")))
-            var arm = Path()
-            arm.move(to: CGPoint(x: side * 7, y: -20))
-            arm.addLine(to: CGPoint(x: side * (celebrating || diving ? 15 : 11),
-                                   y: celebrating ? -30 : diving ? -24 : -13 + side * stride * 4))
-            ctx.stroke(arm, with: .color(isKeeper ? .white : limbColor),
-                       style: StrokeStyle(lineWidth: isKeeper ? 4.5 : 3.5, lineCap: .round))
-            if !isKeeper {
-                var sleeve = Path()
-                sleeve.move(to: CGPoint(x: side * 7, y: -20))
-                sleeve.addLine(to: CGPoint(x: side * (celebrating || diving ? 10 : 9),
-                                          y: celebrating ? -24 : -18 + side * stride * 1.3))
-                ctx.stroke(sleeve, with: .color(kit.sleeveColor),
-                           style: StrokeStyle(lineWidth: 5, lineCap: .round))
+        ctx.translateBy(x: diveDirection * dive * 5, y: dive * 7 - jump)
+        ctx.rotate(by: .radians(dive * diveDirection * 1.15))
+        let bob = reduceMotion ? 0 : (1 - cos(pose.gaitPhase * 2)) * 0.45 * running * (1 - plant)
+        let lean = running * 1.8 + max(0, swing) * plant * 1.6
+        func bodyPoint(_ lateral: Double, _ height: Double, _ reach: Double = 0) -> CGPoint {
+            CGPoint(x: lateral * width + forward.x * (reach + lean),
+                    y: -height - bob + forward.y * reach * 0.65 + lateral * cos(heading) * 0.10)
+        }
+        func stroke(_ points: [CGPoint], _ color: Color, _ lineWidth: Double) {
+            var path = Path()
+            path.addLines(points)
+            ctx.stroke(path, with: .color(color),
+                       style: StrokeStyle(lineWidth: lineWidth, lineCap: .round, lineJoin: .round))
+        }
+        // A swing foot lifts and comes forward; a planted foot travels backwards
+        // relative to the body. Knees and elbows bend instead of rigid pendulums.
+        let legs = [-1.0, 1.0].map { side -> (Double, CGPoint, CGPoint, CGPoint) in
+            let phase = pose.gaitPhase + (side < 0 ? 0 : .pi)
+            let gaitReach = -cos(phase) * 9.5 * running
+            let reach = side > 0 ? gaitReach * (1 - plant) + swing * 12 * plant
+                : gaitReach * (1 - plant)
+            let lift = max(0, sin(phase)) * 5 * running * (1 - plant)
+                + (side > 0 ? max(0, swing) * plant * 2 : 0)
+            let hip = bodyPoint(side * 3, 9)
+            let foot = CGPoint(x: side * 3.5 * width + forward.x * reach,
+                               y: forward.y * reach * 0.7 - lift)
+            let knee = CGPoint(x: (hip.x + foot.x) * 0.5 + forward.x * 1.5,
+                               y: (hip.y + foot.y) * 0.5 - 1.5 - lift * 0.3)
+            return (side, hip, knee, foot)
+        }.sorted { $0.3.y < $1.3.y }
+        for (_, hip, knee, foot) in legs {
+            stroke([hip, knee], skin, 3.4)
+            stroke([hip, CGPoint(x: hip.x + (knee.x - hip.x) * 0.35, y: hip.y + (knee.y - hip.y) * 0.35)], shorts, 4.2)
+            stroke([knee, foot], isKeeper ? Color(hex: "#FFD865") : kit.secondary, 2.7)
+            stroke([foot, CGPoint(x: foot.x + forward.x * 3, y: foot.y + forward.y * 1.8)], Color(hex: "#18252C"), 3.5)
+        }
+
+        func arm(_ side: Double) {
+            let phase = pose.gaitPhase + (side < 0 ? .pi : 0)
+            let reach = -cos(phase) * 5 * running * (1 - plant) - side * plant * 3
+            let raised = celebrates ? MatchMotionTimeline.smooth(celebrationAge / 0.2) : dive
+            let shoulder = bodyPoint(side * 5.8, 19)
+            let elbow = bodyPoint(side * (8 + raised * 3), 14 + raised * 9, reach * 0.4)
+            let hand = bodyPoint(side * (7.5 + raised * 7), 11 + raised * 16, reach)
+            stroke([shoulder, elbow, hand], skin, 2.9)
+            stroke([shoulder, CGPoint(x: shoulder.x + (elbow.x - shoulder.x) * 0.60,
+                                     y: shoulder.y + (elbow.y - shoulder.y) * 0.60)],
+                   isKeeper ? Color(hex: "#FFC93C") : kit.sleeveColor, 4.4)
+            if isKeeper {
+                ctx.fill(Path(ellipseIn: CGRect(x: hand.x - 2.1, y: hand.y - 2.1, width: 4.2, height: 4.2)),
+                         with: .color(.white))
             }
         }
-        let shirt = Path(roundedRect: CGRect(x: -7.5, y: -24, width: 15, height: 17), cornerRadius: 3)
-        ctx.fill(shirt, with: .color(isKeeper ? Color(hex: "#FFC93C") : kit.primary))
-        var shirtContext = ctx
-        shirtContext.clip(to: shirt)
-        if !isKeeper {
-            kit.drawPattern(in: &shirtContext)
+        let farArm = cos(heading) > 0 ? -1.0 : 1.0
+        arm(farArm)
+        var torso = ctx
+        let torsoOrigin = bodyPoint(0, 0)
+        torso.translateBy(x: torsoOrigin.x, y: torsoOrigin.y)
+        torso.rotate(by: .radians(reduceMotion ? 0 : pose.turn * running * 0.06))
+        torso.scaleBy(x: width, y: 1)
+        let shirtRect = CGRect(x: -6.4, y: -22, width: 12.8, height: 13.5)
+        let shirt = Path { p in
+            p.move(to: CGPoint(x: -3, y: -22.5))
+            p.addQuadCurve(to: CGPoint(x: -6.8, y: -19), control: CGPoint(x: -7, y: -22))
+            p.addLine(to: CGPoint(x: -5.6, y: -8.5))
+            p.addQuadCurve(to: CGPoint(x: 5.6, y: -8.5), control: CGPoint(x: 0, y: -7))
+            p.addLine(to: CGPoint(x: 6.8, y: -19))
+            p.addQuadCurve(to: CGPoint(x: 3, y: -22.5), control: CGPoint(x: 7, y: -22))
+            p.closeSubpath()
         }
-        ctx.stroke(shirt, with: .color(.white.opacity(0.85)), lineWidth: 1)
-        ctx.fill(Path(roundedRect: CGRect(x: -7, y: -9, width: 14, height: 4), cornerRadius: 1),
-                 with: .color(Color(hex: "#183447")))
-        ctx.draw(Text("\(player.index + 1)").font(.system(size: 9, weight: .black, design: .rounded))
-            .foregroundColor(isKeeper ? Color(hex: "#172D37") : kit.ink), at: CGPoint(x: 0, y: -16))
-        ctx.fill(Path(ellipseIn: CGRect(x: -4.5, y: -33, width: 9, height: 9)), with: .color(limbColor))
-        ctx.fill(Path(roundedRect: CGRect(x: -4.5, y: -33.5, width: 9, height: 4), cornerRadius: 2),
-                 with: .color(Color(hex: player.index.isMultiple(of: 3) ? "#674831" : "#28303A")))
+        torso.fill(shirt, with: .color(isKeeper ? Color(hex: "#FFC93C") : kit.primary))
+        var cloth = torso
+        cloth.clip(to: shirt)
+        if !isKeeper { kit.drawPattern(in: &cloth, rect: shirtRect) }
+        cloth.fill(Path(CGRect(x: 3.5, y: -22, width: 4, height: 15)), with: .color(.black.opacity(0.13)))
+        torso.stroke(shirt, with: .color(.black.opacity(0.24)), lineWidth: 0.6)
+        torso.fill(Path(roundedRect: CGRect(x: -5.8, y: -10, width: 11.6, height: 3.8), cornerRadius: 1.1),
+                   with: .color(shorts))
+        torso.draw(Text("\(player.index + 1)").font(.system(size: sin(heading) < 0 ? 8.5 : 7.5, weight: .black, design: .rounded))
+            .foregroundColor(isKeeper ? Color(hex: "#172D37") : kit.ink), at: CGPoint(x: 0, y: -15.2))
+        arm(-farArm)
+
+        // Head/nose/hair disclose the facing direction even at rest.
+        let head = bodyPoint(cos(heading) * 1.1, 26.3, running * 0.4)
+        ctx.fill(Path(ellipseIn: CGRect(x: head.x - 3.7, y: head.y - 4.3, width: 7.4, height: 8.3)), with: .color(skin))
+        let hair = Color(hex: player.index.isMultiple(of: 3) ? "#674831" : "#28303A")
+        ctx.fill(Path(roundedRect: CGRect(x: head.x - 3.8, y: head.y - 4.6, width: 7.6,
+                                         height: sin(heading) < -0.25 ? 6.8 : 3.6), cornerRadius: 2.8), with: .color(hair))
+        if sin(heading) > -0.35 {
+            ctx.fill(Path(ellipseIn: CGRect(x: head.x + cos(heading) * 3.5 - 1, y: head.y - 0.8, width: 2.4, height: 2.6)),
+                     with: .color(skin))
+        }
     }
 
-    func drawBall(in context: inout GraphicsContext, frame: MatchPresentationFrame, time: Double) {
+    func drawBall(in context: inout GraphicsContext, frame: MatchPresentationFrame) {
         var ctx = context
         ctx.opacity = frame.ballOpacity
         if frame.trail.count > 1 {
             for index in 1..<frame.trail.count {
                 var segment = Path()
-                segment.move(to: point(frame.trail[index - 1]))
-                segment.addLine(to: point(frame.trail[index]))
+                let from = point(frame.trail[index - 1])
+                let to = point(frame.trail[index])
+                segment.move(to: CGPoint(x: from.x, y: from.y - frame.trailHeights[index - 1] * 28 * scale - 2 * scale))
+                segment.addLine(to: CGPoint(x: to.x, y: to.y - frame.trailHeights[index] * 28 * scale - 2 * scale))
                 ctx.stroke(segment, with: .color((frame.beat.action.isShot ? Color(hex: "#FFC93C") : .white)
                     .opacity(Double(index) / Double(frame.trail.count) * 0.48)),
                     style: StrokeStyle(lineWidth: 2 + CGFloat(index) * 0.3, lineCap: .round))
@@ -379,11 +478,11 @@ private struct MatchPitchPainter {
                  with: .color(.black.opacity(0.3 - frame.ballHeight * 0.12)))
         ctx.translateBy(x: ground.x, y: ground.y - height - 2 * scale)
         ctx.scaleBy(x: scale, y: scale)
-        ctx.rotate(by: .radians(time * 5))
-        let ball = Path(ellipseIn: CGRect(x: -7, y: -7, width: 14, height: 14))
+        ctx.rotate(by: .radians(frame.ballRotation))
+        let ball = Path(ellipseIn: CGRect(x: -5.5, y: -5.5, width: 11, height: 11))
         ctx.fill(ball, with: .color(.white))
         ctx.stroke(ball, with: .color(Color(hex: "#16343B")), lineWidth: 1.1)
-        ctx.draw(Image(systemName: "soccerball").resizable(), in: CGRect(x: -6.5, y: -6.5, width: 13, height: 13))
+        ctx.draw(Image(systemName: "soccerball").resizable(), in: CGRect(x: -5, y: -5, width: 10, height: 10))
     }
 
     func drawCelebration(in context: inout GraphicsContext, moment: MatchGoalMoment, color: Color) {

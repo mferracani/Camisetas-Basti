@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A7B09E07000000000000000B /* MatchPlaybackClock.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7B09E07000000000000000C /* MatchPlaybackClock.swift */; };
+		A7B09E070000000000000009 /* MatchMotion.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7B09E07000000000000000A /* MatchMotion.swift */; };
 		A7B09E070000000000000005 /* MatchKitStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7B09E070000000000000006 /* MatchKitStyle.swift */; };
 		A7B09E070000000000000007 /* MatchKitStyleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7B09E070000000000000008 /* MatchKitStyleTests.swift */; };
 		A7B09E070000000000000001 /* MatchPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7B09E070000000000000002 /* MatchPresentation.swift */; };
@@ -63,6 +65,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		A7B09E07000000000000000C /* MatchPlaybackClock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchPlaybackClock.swift; sourceTree = "<group>"; };
+		A7B09E07000000000000000A /* MatchMotion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchMotion.swift; sourceTree = "<group>"; };
 		A7B09E070000000000000006 /* MatchKitStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchKitStyle.swift; sourceTree = "<group>"; };
 		A7B09E070000000000000008 /* MatchKitStyleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchKitStyleTests.swift; sourceTree = "<group>"; };
 		A7B09E070000000000000002 /* MatchPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchPresentation.swift; sourceTree = "<group>"; };
@@ -111,6 +115,7 @@
 			children = (
 				3A4E77DE5230A87E6BF2DC1D /* MatchSimulation.swift */,
 				A7B09E070000000000000002 /* MatchPresentation.swift */,
+				A7B09E07000000000000000A /* MatchMotion.swift */,
 				4C931DEA97DE4115D3EE444A /* Models.swift */,
 			);
 			path = Models;
@@ -200,6 +205,7 @@
 			children = (
 				15560836092BE03FFC841988 /* ProgressStore.swift */,
 				8D78522FA3E5CBC41470F282 /* SoundManager.swift */,
+				A7B09E07000000000000000C /* MatchPlaybackClock.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -371,6 +377,8 @@
 				0FD8B26C0F03541C7FC4FACF /* HomeView.swift in Sources */,
 				4AABF8CF219FC64EEA218A33 /* MatchSimulation.swift in Sources */,
 				A7B09E070000000000000001 /* MatchPresentation.swift in Sources */,
+				A7B09E070000000000000009 /* MatchMotion.swift in Sources */,
+				A7B09E07000000000000000B /* MatchPlaybackClock.swift in Sources */,
 				A7B09E070000000000000003 /* MatchPitchView.swift in Sources */,
 				A7B09E070000000000000005 /* MatchKitStyle.swift in Sources */,
 				7C2BD79FCD44FAA76C895D80 /* Models.swift in Sources */,

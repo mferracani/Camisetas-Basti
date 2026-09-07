@@ -2,6 +2,62 @@ import XCTest
 @testable import Camisetas_Basti
 
 final class MatchSimulationFactoryTests: XCTestCase {
+    func testPlaybackUsesEvenDisplayStepsAndDoesNotCatchUpAfterPause() {
+        var clock = MatchPlaybackTime()
+        clock.advance(to: 10)
+        for tick in 1...60 { clock.advance(to: 10 + Double(tick) / 60) }
+        XCTAssertEqual(clock.elapsed, 1, accuracy: 0.000001)
+        clock.suspend()
+        clock.advance(to: 900)
+        XCTAssertEqual(clock.elapsed, 1, accuracy: 0.000001)
+        clock.advance(to: 900 + 1.0 / 60.0)
+        XCTAssertEqual(clock.elapsed, 1 + 1.0 / 60.0, accuracy: 0.000001)
+        clock.advance(to: 902) // A stalled frame does not teleport players.
+        XCTAssertEqual(clock.elapsed, 1 + 1.0 / 60.0 + 1.0 / 15.0, accuracy: 0.000001)
+        clock.advance(to: 901) // Reject stale and non-finite timestamps.
+        clock.advance(to: .nan)
+        XCTAssertEqual(clock.elapsed, 1 + 1.0 / 60.0 + 1.0 / 15.0, accuracy: 0.000001)
+        clock.seek(to: 42)
+        clock.advance(to: 1000)
+        XCTAssertEqual(clock.elapsed, 42)
+    }
+
+    func testOutfieldRunningSpeedHasAReadableLimit() throws {
+        for seed in Array(0..<24) + [31, 73, 2026] {
+            let beats = try presentationSimulation(seed: UInt64(seed)).beats
+            let motion = MatchMotionTimeline(beats: beats)
+            let duration = MatchMotionTimeline.playbackDuration
+            var peak = 0.0
+            var worst = ""
+            var visiblePeak = 0.0
+            var visibleWorst = ""
+            for (index, beat) in beats.enumerated() {
+                for step in 0...30 {
+                    for side in [MatchSide.home, .away] {
+                        let t = Double(step) / 30
+                        let halfFrame = 1.0 / 120 / ((beat.endProgress - beat.startProgress) * duration)
+                        let before = motion.positions(beatIndex: index, side: side, local: max(0, t - halfFrame))
+                        let after = motion.positions(beatIndex: index, side: side, local: min(1, t + halfFrame))
+                        let dt = (min(1, t + halfFrame) - max(0, t - halfFrame)) * (beat.endProgress - beat.startProgress) * duration
+                        for slot in 1..<11 {
+                            let speed = motion.player(MatchPlayerRef(side: side, index: slot), beatIndex: index,
+                                                      local: Double(step) / 30, duration: duration).speed
+                            let visible = MatchPitchLayout.visualDistance(before[slot], after[slot]) / dt
+                            if visible > visiblePeak {
+                                visiblePeak = visible
+                                visibleWorst = "\(beat.id) \(beat.action), player=\(side)/\(slot), local=\(t)"
+                            }
+                            if speed > peak { peak = speed; worst = "\(beat.action)" }
+                        }
+                    }
+                }
+            }
+            print("RUN-SPEED seed=\(seed) peak=\(peak) visible-peak=\(visiblePeak) worst=\(worst)")
+            XCTAssertLessThanOrEqual(peak, 0.10, "A sprint must remain readable even when there are many chances")
+            XCTAssertLessThanOrEqual(visiblePeak, 0.14, "Spacing must not add a speed spike: \(visibleWorst)")
+        }
+    }
+
     func testSameSeedProducesIdenticalOpenPlayTimeline() throws {
         let argentina = try XCTUnwrap(CAMI_DATA.team(countryId: "wc26", teamId: "sel_argentina"))
         let curacao = try XCTUnwrap(CAMI_DATA.team(countryId: "wc26", teamId: "sel_curacao"))
@@ -272,6 +328,120 @@ final class MatchSimulationFactoryTests: XCTestCase {
         }
     }
 
+    func testMotionCarriesVelocityAndStrideAcrossOpenPlayBoundaries() throws {
+        let simulation = try presentationSimulation(seed: 73)
+        let motion = MatchMotionTimeline(beats: simulation.beats)
+        var movingJoins = 0
+        for (index, next) in simulation.beats.enumerated().dropFirst() {
+            let previous = simulation.beats[index - 1]
+            guard previous.setPiece == nil, next.setPiece == nil,
+                  !previous.action.isRestart, !next.action.isRestart else { continue }
+            for side in [MatchSide.home, .away] {
+                for playerIndex in 1..<11 {
+                    let player = MatchPlayerRef(side: side, index: playerIndex)
+                    let before = motion.player(player, beatIndex: index - 1, local: 0.99999, duration: 100)
+                    let after = motion.player(player, beatIndex: index, local: 0.00001, duration: 100)
+                    XCTAssertEqual(before.gaitPhase, after.gaitPhase, accuracy: 0.004)
+                    XCTAssertEqual(before.heading, after.heading, accuracy: 0.004)
+                    XCTAssertEqual(before.speed, after.speed, accuracy: 0.003)
+                    if min(before.speed, after.speed) > 0.005 { movingJoins += 1 }
+                }
+            }
+        }
+        XCTAssertGreaterThan(movingJoins, 20, "Continuity must not be achieved by stopping everyone")
+    }
+
+    func testSettledSetPieceStopsFeetAndBallRotation() throws {
+        let simulation = try presentationSimulation(seed: 31)
+        let motion = MatchMotionTimeline(beats: simulation.beats)
+        let index = try XCTUnwrap(simulation.beats.firstIndex { if case .setPieceSetup = $0.action { return true }; return false })
+        let beat = simulation.beats[index]
+        for side in [MatchSide.home, .away] {
+            for indexInTeam in 0..<11 {
+                let player = MatchPlayerRef(side: side, index: indexInTeam)
+                let before = motion.player(player, beatIndex: index, local: 0.8, duration: 100)
+                let after = motion.player(player, beatIndex: index, local: 0.95, duration: 100)
+                XCTAssertEqual(before.speed, 0, accuracy: 0.00001)
+                XCTAssertEqual(after.speed, 0, accuracy: 0.00001)
+                XCTAssertEqual(before.gaitPhase, after.gaitPhase, accuracy: 0.00001)
+            }
+        }
+        let before = try presentationFrame(beat, local: 0.8)
+        let after = try presentationFrame(beat, local: 0.95)
+        XCTAssertEqual(before.ballRotation, after.ballRotation)
+    }
+
+    func testShotHasItsImpulseAtContactRatherThanAcceleratingInFlight() throws {
+        let beat = try XCTUnwrap(try presentationSimulation(seed: 31).beats.first { $0.action.shotOutcome == .goal && $0.setPiece == nil })
+        let release = try presentationFrame(beat, local: 0.26)
+        let early = try presentationFrame(beat, local: 0.36)
+        let late = try presentationFrame(beat, local: 0.66)
+        let nearImpact = try presentationFrame(beat, local: 0.76)
+        XCTAssertGreaterThan(release.ball.distance(to: early.ball), late.ball.distance(to: nearImpact.ball))
+    }
+
+    func testMotionSamplingIsIndependentOfRenderCadenceAndDuration() throws {
+        let beats = try presentationSimulation(seed: 73).beats
+        let motion = MatchMotionTimeline(beats: beats)
+        let player = MatchPlayerRef(side: .home, index: 8)
+        let expected = motion.player(player, beatIndex: 2, local: 0.5, duration: 100)
+        for sample in 0..<240 { _ = motion.player(player, beatIndex: 2, local: Double(sample) / 240, duration: 90) }
+        let actual = motion.player(player, beatIndex: 2, local: 0.5, duration: 100)
+        XCTAssertEqual(expected, actual)
+        let slower = motion.player(player, beatIndex: 2, local: 0.5, duration: 110)
+        XCTAssertEqual(expected.gaitPhase, slower.gaitPhase)
+        XCTAssertEqual(expected.speed * 100, slower.speed * 110, accuracy: 0.00001)
+    }
+
+    func testCachedMatchPreservesRenderedContactsAndBeatBoundaries() throws {
+        for seed in 0..<8 {
+            let beats = try presentationSimulation(seed: UInt64(seed)).beats
+            let motion = MatchMotionTimeline(beats: beats)
+            for beat in beats {
+                // Test the actual multi-beat cache used by Canvas, not isolated beats.
+                let touchTimes = [0.0, 0.16, 0.22, 0.26, 0.28, 0.70, 0.78, 0.84, 1.0]
+                for local in touchTimes {
+                    let progress = beat.startProgress + (beat.endProgress - beat.startProgress) * local
+                    let before = try XCTUnwrap(MatchPresentation.frame(beats: beats, progress: max(0, progress - 0.00000001), motion: motion))
+                    let after = try XCTUnwrap(MatchPresentation.frame(beats: beats, progress: min(1, progress + 0.00000001), motion: motion))
+                    // Restarts intentionally transfer the invisible ball.
+                    if before.ballOpacity > 0.01 && after.ballOpacity > 0.01 {
+                        XCTAssertLessThan(before.ball.distance(to: after.ball), 0.0005, "Ball discontinuity: seed \(seed), beat \(beat.id), local \(local)")
+                    }
+                    for (a, b) in zip(before.homePositions + before.awayPositions, after.homePositions + after.awayPositions) {
+                        XCTAssertLessThan(a.distance(to: b), 0.0005)
+                    }
+                    for positions in [after.homePositions, after.awayPositions] {
+                        XCTAssertGreaterThanOrEqual(minimumVisualDistance(in: positions), MatchPitchLayout.minimumVisualDistance - 0.000001)
+                    }
+                }
+            }
+        }
+    }
+
+    func testReducedMotionHasNoBallSpinOrAirborneTrail() throws {
+        let beats = try presentationSimulation(seed: 73).beats
+        let motion = MatchMotionTimeline(beats: beats)
+        for step in 0...100 {
+            let frame = try XCTUnwrap(MatchPresentation.frame(beats: beats, progress: Double(step) / 100,
+                                                             reducedMotion: true, motion: motion))
+            XCTAssertEqual(frame.ballRotation, 0)
+            XCTAssertEqual(frame.ballHeight, 0)
+            XCTAssertTrue(frame.trail.isEmpty)
+            XCTAssertTrue(frame.trailHeights.isEmpty)
+        }
+    }
+
+    func testCachedPresentationSamplingPerformance() throws {
+        let beats = try presentationSimulation(seed: 73).beats
+        let motion = MatchMotionTimeline(beats: beats)
+        measure {
+            for step in 0..<120 {
+                _ = MatchPresentation.frame(beats: beats, progress: Double(step) / 120, motion: motion)
+            }
+        }
+    }
+
     func testPresentationBallRemainsContinuousWhenReleasedAndReceived() throws {
         let simulation = try presentationSimulation(seed: 73)
         var checkedActions = Set<String>()
@@ -352,13 +522,15 @@ final class MatchSimulationFactoryTests: XCTestCase {
         XCTAssertFalse(midFlight.trail.isEmpty)
         XCTAssertLessThanOrEqual(midFlight.trail.count, 7)
         XCTAssertEqual(midFlight.trail.last, midFlight.ball)
+        XCTAssertEqual(midFlight.trailHeights.last, midFlight.ballHeight)
         XCTAssertEqual(try presentationFrame(cross, local: 0).ballHeight, 0)
         XCTAssertEqual(try presentationFrame(cross, local: 1).ballHeight, 0)
 
         let receiver = try XCTUnwrap(cross.action.receiver)
         let received = try presentationFrame(cross, local: 0.90)
         let positions = receiver.side == .home ? received.homePositions : received.awayPositions
-        XCTAssertEqual(received.ball, positions[receiver.index])
+        XCTAssertLessThan(received.ball.distance(to: positions[receiver.index]), 0.026,
+                          "Reception stays within a foot's reach, not inside the torso")
     }
 
     func testPresentationResolvesShotsAtTheSharedImpactTime() throws {

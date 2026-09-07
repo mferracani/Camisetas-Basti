@@ -1,5 +1,9 @@
 # Security Review — Camisetas Basti
 
+## Revisión incremental: motion natural — 2026-09-07
+
+Revisión estática acotada a curvas/poses, renderer Canvas, reloj visual y tanda final. No incorpora red, URLs, analytics, logs de usuario, permisos, persistencia ni paquetes. El nuevo modelo importa únicamente Foundation. Los videos de QA son artefactos locales de desarrollo y no se incorporan al bundle. Sin hallazgos bloqueantes en este diff; no constituye certificación legal ni aprobación de publicación.
+
 ## Revisión incremental: camisetas y pelota parada — 2026-09-07
 
 Alcance: cambios de catálogo, renderer compartido, microeventos de tiros libres/penales y harness Debug. Revisión estática del diff: sin conexiones de red, permisos nuevos, analytics, dependencias ni persistencia nueva. Las fuentes web quedan en documentación de desarrollo, no como enlaces de navegación infantil. Los PNG mal asociados dejan de referenciarse, pero no se borran. El harness reproducible queda bajo `#if DEBUG` y no registra datos del usuario.
@@ -292,3 +296,7 @@ Revisión estática acotada al diff de partidos (incluidos archivos nuevos), sin
 La revisión independiente detectó y se corrigieron dos problemas visuales: gol que finalizaba antes de la línea y alternativas de camisetas que aún podían confundirse. Sin otros hallazgos accionables en el alcance revisado. Las afirmaciones históricas de seis jugadores en la revisión v2 corresponden a la versión anterior: el estado vigente utiliza once por equipo.
 
 Handoff: revisión del usuario de la experiencia local, y proceso habitual de release si solicita publicarla. Este delta no aprueba por sí mismo merge ni submit.
+
+## Delta de reloj y carreras — 2026-09-07
+
+Revisión estática focal del reloj, trayectorias y pruebas: no se agregan red, permisos, servicios externos, identificadores ni datos persistentes. CADisplayLink usa un proxy débil, se pausa al salir de la escena y se invalida al cerrar el modal. `--motion-diagnostics` registra únicamente tiempos de dibujo y progreso técnico agregados dentro de `#if DEBUG`; no está incluido en Release. Kits, catálogo y almacenamiento de progreso quedan intactos. Sin hallazgos de seguridad nuevos en este alcance; no sustituye revisión de distribución ni aprobación de publicación.

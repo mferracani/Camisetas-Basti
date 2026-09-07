@@ -931,18 +931,18 @@ struct MatchSimulationModal: View {
         #endif
         return systemReduceMotion
     }
-    @State private var elapsed: TimeInterval = 0
+    @StateObject private var playback = MatchPlaybackClock()
     @State private var stage: MatchSimulationStage = .match
-    @State private var penaltyElapsed: TimeInterval = 0
     @State private var simulation: MatchSimulation
+    @State private var motionTimeline: MatchMotionTimeline
     @State private var penaltyShootout: PenaltyShootout?
     @State private var duration: TimeInterval
-    @State private var lastTickDate: Date?
+
+    private var elapsed: Double { min(duration, playback.elapsed) }
+    private var penaltyElapsed: Double { min(penaltyDuration, max(0, playback.elapsed - duration)) }
 
     private var result: MatchSimulationResult { simulation.result }
     private var beats: [MatchBeat] { simulation.beats }
-
-    private let timer = Timer.publish(every: 1.0 / 30.0, on: .main, in: .common).autoconnect()
 
     init(
         home: Team,
@@ -961,6 +961,7 @@ struct MatchSimulationModal: View {
         self.onFinish = onFinish
         let simulation = suppliedSimulation ?? MatchSimulationFactory.makeSimulation(home: home, away: away)
         _simulation = State(initialValue: simulation)
+        _motionTimeline = State(initialValue: MatchMotionTimeline(beats: simulation.beats))
         if showsPenaltyShootout && simulation.result.decidedByPenalties {
             #if DEBUG
             if ProcessInfo.processInfo.arguments.contains("--match-preview") {
@@ -996,25 +997,17 @@ struct MatchSimulationModal: View {
                     Group {
                         if showPenaltyScene, let penaltyShootout {
                             PenaltyShootoutView(
-                                home: home,
-                                away: away,
-                                homeFlag: homeFlag,
-                                awayFlag: awayFlag,
-                                shootout: penaltyShootout,
-                                elapsed: min(penaltyElapsed, penaltyDuration),
-                                duration: penaltyDuration,
-                                reduceMotion: reduceMotion
+                                home: home, away: away, homeFlag: homeFlag, awayFlag: awayFlag,
+                                shootout: penaltyShootout, elapsed: penaltyElapsed,
+                                duration: penaltyDuration, reduceMotion: reduceMotion
                             )
                         } else {
                             MatchPitchView(
-                                home: home,
-                                away: away,
-                                frame: MatchPresentation.frame(beats: beats, progress: progress, reducedMotion: reduceMotion),
-                                beats: beats,
-                                progress: progress,
-                                elapsed: elapsed,
-                                duration: duration,
-                                reduceMotion: reduceMotion
+                                home: home, away: away,
+                                frame: MatchPresentation.frame(beats: beats, progress: progress,
+                                    reducedMotion: reduceMotion, motion: motionTimeline, duration: duration),
+                                beats: beats, progress: progress, elapsed: elapsed,
+                                duration: duration, reduceMotion: reduceMotion
                             )
                         }
                     }
@@ -1035,21 +1028,26 @@ struct MatchSimulationModal: View {
             }
         }
         .statusBarHidden(true)
+        .onChange(of: scenePhase) { phase in updatePlayback(active: phase == .active) }
+        .onChange(of: reduceMotion) { reduced in updatePlayback(lowMotion: reduced) }
+        .onDisappear { playback.stop() }
         .onAppear {
-            duration = reduceMotion ? 100 : Double.random(in: 90...110)
+            // Keep the established duration range, but do not randomly speed up
+            // identical choreography. Use its calm, fully readable upper end.
+            duration = reduceMotion ? 100 : MatchMotionTimeline.playbackDuration
+            var initialElapsed = 0.0
             #if DEBUG
             if ProcessInfo.processInfo.arguments.contains("--match-preview") {
-                duration = 100
+                duration = reduceMotion ? 100 : MatchMotionTimeline.playbackDuration
                 if let value = ProcessInfo.processInfo.environment["MATCH_PREVIEW_PROGRESS"], let initial = Double(value) {
-                    elapsed = min(1, max(0, initial)) * duration
+                    initialElapsed = min(1, max(0, initial)) * duration
                 }
                 if let moment = ProcessInfo.processInfo.environment["MATCH_PREVIEW_MOMENT"] {
                     if moment.hasPrefix("shootout"), let penaltyShootout {
                         let index = penaltyShootout.shots.firstIndex(where: { $0.outcome == .goal }) ?? 0
-                        elapsed = duration
                         stage = moment == "shootout-finished" ? .finished : .penalties
                         let local = moment == "shootout-before-goal" ? 0.74 : 0.82
-                        penaltyElapsed = stage == .finished ? penaltyDuration : (Double(index) + local) * penaltyShotDuration
+                        initialElapsed = duration + (stage == .finished ? penaltyDuration : (Double(index) + local) * penaltyShotDuration)
                     }
                     let kind: MatchSetPiece? = moment.hasPrefix("free-kick") ? .freeKick
                         : moment.hasPrefix("penalty") ? .penalty : nil
@@ -1070,68 +1068,34 @@ struct MatchSimulationModal: View {
                         let local = kind != nil
                             ? (moment.hasSuffix("start") ? 0.05 : moment.hasSuffix("shot") ? 0.64 : moment.hasSuffix("result") ? 0.86 : 0.96)
                             : (moment == "before-goal" ? 0.74 : 0.82)
-                        elapsed = (previewBeat.startProgress + (previewBeat.endProgress - previewBeat.startProgress) * local) * duration
+                        initialElapsed = (previewBeat.startProgress + (previewBeat.endProgress - previewBeat.startProgress) * local) * duration
                     }
                 }
             }
             #endif
-            lastTickDate = Date()
+            playback.seek(to: initialElapsed)
+            updatePlayback()
         }
-        .onReceive(timer) { tickDate in
-            #if DEBUG
-            if ProcessInfo.processInfo.arguments.contains("--match-preview-still") { return }
-            #endif
-            guard stage != .finished else { return }
-            guard scenePhase == .active else {
-                lastTickDate = tickDate
-                return
-            }
-            let tickDuration = lastTickDate.map {
-                min(0.1, max(0, tickDate.timeIntervalSince($0)))
-            } ?? (1.0 / 30.0)
-            lastTickDate = tickDate
-            switch stage {
-            case .match:
-                elapsed = min(duration, elapsed + tickDuration)
-                if elapsed >= duration {
-                    if shouldShowPenaltyShootout {
-                        penaltyElapsed = 0
-                        if reduceMotion {
-                            stage = .penalties
-                        } else {
-                            withAnimation(.spring(response: 0.5, dampingFraction: 0.78)) {
-                                stage = .penalties
-                            }
-                        }
-                    } else {
-                        if reduceMotion {
-                            stage = .finished
-                        } else {
-                            withAnimation(.spring(response: 0.5, dampingFraction: 0.78)) {
-                                stage = .finished
-                            }
-                        }
-                    }
-                }
-            case .penalties:
-                penaltyElapsed = min(penaltyDuration, penaltyElapsed + tickDuration)
-                if penaltyElapsed >= penaltyDuration {
-                    if reduceMotion {
-                        stage = .finished
-                    } else {
-                        withAnimation(.spring(response: 0.5, dampingFraction: 0.78)) {
-                            stage = .finished
-                        }
-                    }
-                }
-            case .finished:
-                return
-            }
+        .onChange(of: playback.elapsed) { time in
+            let next: MatchSimulationStage = time < duration ? .match
+                : (shouldShowPenaltyShootout && time < duration + penaltyDuration ? .penalties : .finished)
+            guard stage != next else { return }
+            if reduceMotion { stage = next }
+            else { withAnimation(.easeOut(duration: 0.3)) { stage = next } }
+            if next == .finished { playback.pause() }
         }
     }
 
     private var isFinished: Bool {
         stage == .finished
+    }
+
+    private func updatePlayback(active: Bool? = nil, lowMotion: Bool? = nil) {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--match-preview-still") { playback.pause(); return }
+        #endif
+        if stage == .finished || !(active ?? (scenePhase == .active)) { playback.pause() }
+        else { playback.start(reducedMotion: lowMotion ?? reduceMotion) }
     }
 
     private var shouldShowPenaltyShootout: Bool {
@@ -1246,13 +1210,13 @@ struct MatchSimulationModal: View {
         case let .carry(player):
             return "AVANZA \(team(for: player.side).short.uppercased())"
         case let .pass(from, _):
-            return local < 0.34
+            return local < 0.22
                 ? "LEVANTA LA CABEZA \(team(for: from.side).short.uppercased())"
                 : "PASE DE \(team(for: from.side).short.uppercased())"
         case let .cross(from, _):
-            return local < 0.28
+            return local < 0.16
                 ? "DESBORDA \(team(for: from.side).short.uppercased())"
-                : local < 0.76
+                : local < 0.84
                     ? "TIRA EL CENTRO \(team(for: from.side).short.uppercased())"
                     : "LLEGA EL DELANTERO"
         case let .pressure(_, defender):
@@ -1728,29 +1692,32 @@ private struct PenaltyShootoutView: View {
                     .frame(width: 86, height: 72)
                     .rotationEffect(.degrees(keeperRotation(for: shot)))
                     .position(point(keeper, in: geo.size))
-                    .animation(reduceMotion ? nil : .interactiveSpring(response: 0.22, dampingFraction: 0.72), value: localProgress)
 
-                if !reduceMotion && motionProgress > 0.42 && motionProgress < 0.78 {
-                    BallTrail(from: CGPoint(x: 0.5, y: 0.72), to: ball, isShot: true, isCross: false)
-                        .stroke(Color(hex: "#FFC93C").opacity(0.86), style: StrokeStyle(lineWidth: 5, lineCap: .round))
-                        .frame(width: geo.size.width, height: geo.size.height)
+                if !reduceMotion && motionProgress > 0.44 && motionProgress < 0.78 {
+                    let previous = ballPoint(for: shot, at: max(0.44, motionProgress - 0.035))
+                    Path { path in
+                        path.move(to: point(previous, in: geo.size))
+                        path.addLine(to: point(ball, in: geo.size))
+                    }
+                    .stroke(Color.white.opacity(0.48), style: StrokeStyle(lineWidth: 3, lineCap: .round))
                 }
 
-                FootballView(isShot: true, spin: reduceMotion ? 0 : elapsed * 1.7)
+                FootballView(isShot: true, spin: reduceMotion ? 0 : Double((ball.y - 0.72) * 5))
                     .scaleEffect(ballScale)
                     .position(point(ball, in: geo.size))
-                    .animation(reduceMotion ? nil : .easeInOut(duration: 0.08), value: localProgress)
 
                 PenaltyKickerView(
                     style: kickerStyle,
                     number: currentIndex + 1,
-                    isKicking: motionProgress > 0.34 && motionProgress < 0.78
+                    stride: reduceMotion ? 0 : sin(Double(smooth(min(1, motionProgress / 0.42))) * .pi * 5)
+                        * (1 - Double(smooth((motionProgress - 0.32) / 0.10))),
+                    kick: reduceMotion ? 0 : kickSwing,
+                    leftFooted: shot.side == .away
                 )
                 .frame(width: 92, height: 138)
-                .scaleEffect(1 + min(0.12, motionProgress * 0.12))
+                .scaleEffect(1 - min(0.10, motionProgress / 0.42 * 0.10))
                 .rotationEffect(.degrees(shot.side == .home ? -3 : 3))
-                .position(point(kicker, in: geo.size))
-                .animation(reduceMotion ? nil : .interactiveSpring(response: 0.24, dampingFraction: 0.76), value: localProgress)
+                .position(x: kicker.x * geo.size.width, y: kicker.y * geo.size.height - 63)
 
                 if localProgress > 0.78 {
                     PenaltyOutcomeFlash(outcome: shot.outcome)
@@ -1782,16 +1749,25 @@ private struct PenaltyShootoutView: View {
     }
 
     private var ballScale: CGFloat {
-        if motionProgress < 0.46 { return 1 }
-        if motionProgress < 0.78 { return 1.18 }
-        return currentShot.outcome == .goal ? 0.82 : 1.05
+        let travel = min(1, max(0, (motionProgress - 0.44) / 0.34))
+        let resolution = smooth((motionProgress - 0.78) / 0.22)
+        return 1 - travel * 0.36 + resolution * (currentShot.outcome == .goal ? -0.08 : 0.12)
     }
 
-    private func ballPoint(for shot: PenaltyShot) -> CGPoint {
+    private var kickSwing: Double {
+        let age = (Double(motionProgress) - 0.44) * shotDuration
+        if age < -0.12 { return -MatchMotionTimeline.smooth((age + 0.35) / 0.23) }
+        if age < 0.04 { return -1 + 2 * MatchMotionTimeline.smooth((age + 0.12) / 0.16) }
+        return 1 - MatchMotionTimeline.smooth((age - 0.04) / 0.38)
+    }
+
+    private func ballPoint(for shot: PenaltyShot, at sampledProgress: CGFloat? = nil) -> CGPoint {
+        let motionProgress = sampledProgress ?? self.motionProgress
         let spot = CGPoint(x: 0.5, y: 0.72)
         if motionProgress < 0.44 { return spot }
         if motionProgress < 0.78 {
-            let travel = smooth((motionProgress - 0.44) / 0.34)
+            let t = (motionProgress - 0.44) / 0.34
+            let travel = t + 0.28 * t * (1 - t)
             return interpolate(from: spot, to: shot.target, progress: travel)
         }
         if shot.outcome == .save {
@@ -1808,20 +1784,22 @@ private struct PenaltyShootoutView: View {
             let run = smooth(motionProgress / 0.42)
             return interpolate(from: CGPoint(x: 0.5 + offset, y: 0.94), to: CGPoint(x: 0.5 + offset * 0.35, y: 0.76), progress: run)
         }
-        return CGPoint(x: 0.5 + offset * 0.18, y: 0.76)
+        let followThrough = smooth((motionProgress - 0.42) / 0.18)
+        return CGPoint(x: 0.5 + offset * 0.35, y: 0.76 - 0.025 * followThrough)
     }
 
     private func keeperPoint(for shot: PenaltyShot) -> CGPoint {
         let base = CGPoint(x: 0.5, y: 0.315)
         guard motionProgress > 0.44 else { return base }
-        let dive = smooth((motionProgress - 0.44) / 0.34)
-        return interpolate(from: base, to: shot.keeperTarget, progress: dive)
+        let dive = smooth((motionProgress - 0.47) / 0.31)
+        let point = interpolate(from: base, to: shot.keeperTarget, progress: dive)
+        return CGPoint(x: point.x, y: point.y + 0.07 * smooth((motionProgress - 0.78) / 0.20))
     }
 
     private func keeperRotation(for shot: PenaltyShot) -> Double {
         guard motionProgress > 0.44 else { return 0 }
         let direction = shot.keeperTarget.x < 0.5 ? -1.0 : 1.0
-        return direction * (shot.outcome == .save ? 28 : 18)
+        return direction * Double(smooth((motionProgress - 0.47) / 0.31)) * (shot.outcome == .save ? 62 : 48)
     }
 
     private func team(for side: MatchSide) -> Team {
@@ -1972,75 +1950,105 @@ private struct PenaltyKeeperView: View {
     let outcome: PenaltyShotOutcome
 
     var body: some View {
-        ZStack {
-            Capsule()
-                .fill(style.secondary.opacity(0.95))
-                .frame(width: 82, height: 12)
-                .rotationEffect(.degrees(outcome == .save && progress > 0.48 ? -8 : 0))
-                .offset(y: -8)
-            RoundedRectangle(cornerRadius: 14)
-                .fill(style.primary)
-                .frame(width: 48, height: 50)
-                .overlay(RoundedRectangle(cornerRadius: 14).stroke(style.border, lineWidth: 3))
-            Circle()
-                .fill(Color(hex: "#F2C39A"))
-                .frame(width: 24, height: 24)
-                .offset(y: -38)
-            HStack(spacing: 16) {
-                Capsule().fill(style.secondary).frame(width: 12, height: 34).rotationEffect(.degrees(18))
-                Capsule().fill(style.secondary).frame(width: 12, height: 34).rotationEffect(.degrees(-18))
+        Canvas { context, size in
+            var ctx = context
+            ctx.translateBy(x: size.width / 2, y: size.height / 2)
+            let reach = MatchMotionTimeline.smooth((Double(progress) - 0.47) / 0.31)
+            let skin = Color(hex: "#E8B58C")
+            let shorts = Color(hex: "#183447")
+            func limb(_ points: [CGPoint], _ color: Color, _ width: Double) {
+                var path = Path()
+                path.addLines(points)
+                ctx.stroke(path, with: .color(color),
+                           style: StrokeStyle(lineWidth: width, lineCap: .round, lineJoin: .round))
             }
-            .offset(y: 35)
+            for side in [-1.0, 1.0] {
+                let hip = CGPoint(x: side * 5, y: 9)
+                let knee = CGPoint(x: side * (9 - reach * 3), y: 22)
+                let foot = CGPoint(x: side * (12 - reach * 5), y: 32 - side * reach * 3)
+                limb([hip, knee], shorts, 7)
+                limb([knee, foot], style.secondary, 5)
+                limb([foot, CGPoint(x: foot.x + side * 3, y: foot.y)], Color(hex: "#172A31"), 6)
+                let shoulder = CGPoint(x: side * 12, y: -17)
+                let elbow = CGPoint(x: side * (20 + reach * 5), y: -8 - reach * 10)
+                let hand = CGPoint(x: side * (26 + reach * 10), y: -14 - reach * 15)
+                limb([shoulder, elbow, hand], style.primary, 6)
+                ctx.fill(Path(roundedRect: CGRect(x: hand.x - 3.5, y: hand.y - 4, width: 7, height: 8), cornerRadius: 2.5),
+                         with: .color(.white))
+            }
+            let torso = Path(roundedRect: CGRect(x: -13, y: -22, width: 26, height: 33), cornerRadius: 5)
+            ctx.fill(torso, with: .color(style.primary))
+            ctx.stroke(torso, with: .color(.black.opacity(0.25)), lineWidth: 0.8)
+            ctx.fill(Path(roundedRect: CGRect(x: -11, y: 6, width: 22, height: 9), cornerRadius: 2), with: .color(shorts))
+            ctx.fill(Path(ellipseIn: CGRect(x: -8, y: -42, width: 16, height: 18)), with: .color(skin))
+            ctx.fill(Path(roundedRect: CGRect(x: -8, y: -43, width: 16, height: 6), cornerRadius: 3),
+                     with: .color(Color(hex: "#28303A")))
+            ctx.draw(Text("1").font(.system(size: 13, weight: .black, design: .rounded))
+                .foregroundColor(style.secondary), at: CGPoint(x: 0, y: -7))
         }
-        .shadow(color: Color.black.opacity(0.36), radius: 8, x: 0, y: 5)
     }
 }
 
 private struct PenaltyKickerView: View {
     let style: MatchKitStyle
     let number: Int
-    let isKicking: Bool
+    let stride: Double
+    let kick: Double
+    let leftFooted: Bool
 
     var body: some View {
-        ZStack {
-            Circle()
-                .fill(Color(hex: "#DCA57C"))
-                .frame(width: 30, height: 30)
-                .offset(y: -56)
-            Canvas { context, size in
-                style.drawShirt(in: &context, rect: CGRect(origin: .zero, size: size))
+        Canvas { context, size in
+            var ctx = context
+            ctx.translateBy(x: size.width / 2, y: size.height / 2 - 3)
+            let skin = Color(hex: "#DCA57C")
+            let shorts = Color(hex: "#183447")
+            func line(_ points: [CGPoint], _ color: Color, _ width: Double) {
+                var path = Path()
+                path.addLines(points)
+                ctx.stroke(path, with: .color(color),
+                           style: StrokeStyle(lineWidth: width, lineCap: .round, lineJoin: .round))
             }
-                .frame(width: 54, height: 66)
-                .overlay(
-                    Text("\(number)")
-                        .font(.system(size: 24, weight: .black, design: .rounded))
-                        .foregroundColor(style.ink)
-                )
-                .overlay(RoundedRectangle(cornerRadius: 10).stroke(.white.opacity(0.9), lineWidth: 2))
-            HStack(spacing: 18) {
-                Capsule()
-                    .fill(style.secondary)
-                    .frame(width: 14, height: 50)
-                    .rotationEffect(.degrees(isKicking ? -38 : 10))
-                    .offset(y: 46)
-                Capsule()
-                    .fill(style.secondary)
-                    .frame(width: 14, height: 50)
-                    .rotationEffect(.degrees(isKicking ? 44 : -8))
-                    .offset(y: 46)
+            ctx.fill(Path(ellipseIn: CGRect(x: -23, y: 60, width: 46, height: 9)),
+                     with: .color(.black.opacity(0.20)))
+            for side in [-1.0, 1.0] {
+                let kicking = (side < 0) == leftFooted
+                let reach = side * stride * 7 - (kicking ? kick * 29 : 0)
+                let hip = CGPoint(x: side * 10, y: 27)
+                let knee = CGPoint(x: side * 12 + (kicking ? kick * side * 4 : 0), y: 45 + reach * 0.45)
+                let foot = CGPoint(x: side * 12, y: 62 + reach)
+                line([hip, knee], skin, 9)
+                line([hip, CGPoint(x: hip.x, y: 36)], shorts, 12)
+                line([knee, foot], style.secondary, 7)
+                line([foot, CGPoint(x: foot.x, y: foot.y - 6)], Color(hex: "#172A31"), 8)
+                let shoulder = CGPoint(x: side * 21, y: -23)
+                let elbow = CGPoint(x: side * 30, y: -5 - abs(kick) * 7)
+                let hand = CGPoint(x: side * 29, y: 13 + side * stride * 8 - abs(kick) * 16)
+                line([shoulder, elbow, hand], skin, 7)
+                line([shoulder, CGPoint(x: side * 26, y: -13)], style.sleeveColor, 12)
             }
-            Capsule()
-                .fill(style.sleeveColor)
-                .frame(width: 14, height: 44)
-                .rotationEffect(.degrees(isKicking ? -42 : -18))
-                .offset(x: -34, y: -18)
-            Capsule()
-                .fill(style.sleeveColor)
-                .frame(width: 14, height: 44)
-                .rotationEffect(.degrees(isKicking ? 38 : 18))
-                .offset(x: 34, y: -18)
+            let shirt = Path { path in
+                path.move(to: CGPoint(x: -8, y: -33))
+                path.addQuadCurve(to: CGPoint(x: -23, y: -24), control: CGPoint(x: -23, y: -33))
+                path.addLine(to: CGPoint(x: -19, y: 23))
+                path.addQuadCurve(to: CGPoint(x: 19, y: 23), control: CGPoint(x: 0, y: 27))
+                path.addLine(to: CGPoint(x: 23, y: -24))
+                path.addQuadCurve(to: CGPoint(x: 8, y: -33), control: CGPoint(x: 23, y: -33))
+                path.closeSubpath()
+            }
+            ctx.fill(shirt, with: .color(style.primary))
+            var fabric = ctx
+            fabric.clip(to: shirt)
+            style.drawPattern(in: &fabric, rect: CGRect(x: -23, y: -33, width: 46, height: 58))
+            fabric.fill(Path(CGRect(x: 13, y: -33, width: 12, height: 60)), with: .color(.black.opacity(0.12)))
+            ctx.stroke(shirt, with: .color(.black.opacity(0.24)), lineWidth: 1)
+            ctx.fill(Path(roundedRect: CGRect(x: -19, y: 21, width: 38, height: 11), cornerRadius: 3), with: .color(shorts))
+            ctx.draw(Text("\(number)").font(.system(size: 23, weight: .black, design: .rounded))
+                .foregroundColor(style.ink), at: CGPoint(x: 0, y: -4))
+            ctx.fill(Path(ellipseIn: CGRect(x: -11, y: -61, width: 22, height: 25)), with: .color(skin))
+            ctx.fill(Path(roundedRect: CGRect(x: -11.5, y: -63, width: 23, height: 20), cornerRadius: 8),
+                     with: .color(Color(hex: "#28303A")))
+            ctx.fill(Path(roundedRect: CGRect(x: -7, y: -41, width: 14, height: 8), cornerRadius: 3), with: .color(skin))
         }
-        .shadow(color: Color.black.opacity(0.34), radius: 10, x: 0, y: 8)
     }
 }
 

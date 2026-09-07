@@ -1,5 +1,13 @@
 # UX Spec — Torneo simulado
 
+## Iteración motion natural — 2026-09-07
+
+Pedido explícito de Mati con `ui-art-director`, dentro del modal y gates existentes. Tesis: **perfil, apoyo, contacto y continuación de la carrera**. Trayectorias cúbicas conectadas, orientación corporal gradual, zancada por distancia, piernas/brazos articulados, toques cortos y recepción desde el pie. El arquero conserva la caída y se recupera sin saltar de pose al cambiar la jugada. Jugadores más compactos, sombra anclada y profundidad por posición.
+
+El render de cancha y tanda usa `TimelineView` con intervalo objetivo de 1/60 s; esto reemplaza el refresco visual de 30 Hz indicado en el addendum v2. El reloj lógico sigue a 30 Hz y la presentación interpola como máximo hasta el siguiente tick, sin springs sobre posiciones. Fondo, final y Reduce Motion pausan el render continuo; se conserva el relato accesible único y el impacto `0.78`.
+
+Tanda final: carrera y apoyo continuos, golpe sin rebote, pelota que se achica con la distancia, figura del pateador con shorts/rodillas/botines y aterrizaje del arquero. Sin controles nuevos. Coreografía, evidencia y límites: `match-natural-motion-2026-09-07.md`.
+
 ## Incremento Liga Argentina 2026
 
 - Al elegir `ARGENTINA`, la llave suma una columna exterior `RONDA DE 32` en cada lado.
@@ -318,3 +326,7 @@ Pedido de Mati: mejorar una visualización que se percibe tosca, poco animada y 
 - **Accesibilidad:** Reduce Motion elimina zancadas, partículas, vuelo en altura y rebotes; mantiene eventos discretos y la misma resolución. El gol nunca se anuncia antes de su entrada al arco.
 
 **Handoff:** SwiftUI Engineer implementa la capa de presentación sobre la timeline existente; QA verifica continuidad renderizada, resultado/cierre/llave y legibilidad en iPad. No requiere nuevas reglas de producto ni persistencia.
+
+### Afinado de carreras — 2026-09-07
+
+Pedido explícito de Mati después de ver la iteración: carreras demasiado rápidas y trabadas. Se mantiene estructura, cámara y kits. La carrera tiene aceleración corta, crucero y frenada, con menos pasos por segundo y curvas laterales para anticipar cruces. Los jugadores de apoyo no se reorganizan a toda velocidad durante un remate. Separación ajustada a la silueta compacta, manteniendo 22 jugadores legibles. Se quitan intercambios redundantes, no goles ni remates; se usa 110 s estables en lugar de sortear velocidad dentro del rango aprobado. Gol/atajada siguen ligados al contacto y al impacto 0.78. El reloj se congela al ir al fondo y retoma sin recuperar tiempo perdido. Reduce Motion conserva sus estados discretos y 100 s. Verificación y handoff: `.project/match-running-fluidity-2026-09-07.md`.

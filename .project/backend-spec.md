@@ -1,5 +1,11 @@
 # Backend Spec — Camisetas Basti
 
+## Contrato incremental: motion natural — 2026-09-07
+
+`MatchMotionTimeline` es un caché inmutable de curvas por beat/jugador, longitudes recorridas y orientaciones. Se crea junto con `MatchSimulation` y se conserva en el modal. `MatchPlayerMotion` expone orientación, velocidad, fase de zancada y giro para dibujar. No contiene estado de reproducción mutable: muestrear a 30/60/120 Hz o buscar otro instante no cambia la trayectoria.
+
+`MatchPresentationFrame` incorpora poses, giro del balón y alturas de la estela. La pelota comparte puntos de contacto con la trayectoria de los jugadores y conserva continuidad entre posesión, vuelo y recepción. El resultado, beats, duración, persistencia, catálogo y llaves no se alteran. Sin red ni dependencias nuevas.
+
 ## Contrato incremental: Liga Argentina 2026
 
 - `CAMI_DATA.teams["arg"]` contiene los 30 clubes oficiales LPF 2026, con IDs únicos y dos kits locales por club.
@@ -770,3 +776,7 @@ La simulación es efímera y 100% local. No agrega persistencia, red, analytics 
 ### Presentación de partidos (2026-09-07)
 
 `MatchPresentation` deriva un `MatchPresentationFrame` de los beats y el progreso: jugadores, pelota, altura, opacidad y estela. Es una proyección efímera para dibujar y probar la misma timeline; no modifica resultados ni agrega datos persistidos. `shotImpactProgress = 0.78` unifica impacto, marcador y feedback. Handoff a SwiftUI y QA dentro del contrato local aprobado.
+
+### Corrección de fluidez (2026-09-07)
+
+`MatchTimelineBuilder` asigna tiempo según desplazamientos, conserva remates/resultados y evita recepciones lejanas artificiales. `MatchMotionTimeline` precalcula velocidad de crucero, curvas de cruce, orientación y zancada; se construye una vez por partido. `MatchPlaybackClock` es efímero, usa CADisplayLink y un único tiempo monotónico para todo el modal. Sin nueva persistencia ni migraciones. Duración normal estable de 110 s dentro del rango aprobado, Reduce Motion 100 s y tanda 70 s. Detalle y evidencia: `.project/match-running-fluidity-2026-09-07.md`.

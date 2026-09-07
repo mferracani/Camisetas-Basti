@@ -1,5 +1,19 @@
 # QA Checklist — Camisetas Basti
 
+## Incremento motion natural — 2026-09-07
+
+- [x] 74 unit tests, 0 fallos; incluye curvas/velocidad y zancada continuas, pausas reales, independencia del refresco y contacto del balón con el caché multijugada.
+- [x] 22 jugadores legibles, separación dentro de cada equipo y continuidad renderizada en ocho semillas completas.
+- [x] Reduce Motion sin giro, altura ni estela; conserva resultados e impacto.
+- [x] Cuatro XCUITests: goles/Reduce Motion; tiro libre/penal en tres momentos normales y reducidos; tanda/cierre; partido completo y persistencia del resultado en fixture.
+- [x] Reejecución posterior al refinamiento final del pateador: 74 unitarios + XCUITest de tanda/cierre, sin fallos.
+- [x] Build Debug de pruebas y build Release para iOS Simulator, sin firma.
+- [x] Inspección y grabaciones de la app real en iPad Pro 13 (M5); XCUITests en iPad A16, horizontal.
+- [x] Muestreo del caché: promedio ~8 ms por 120 frames (~0,06 ms/frame) en test de Simulator. No mide Canvas/GPU ni certifica 60 FPS en hardware.
+- [ ] FPS, temperatura, batería y legibilidad de la silueta compacta en iPad físico con Basti.
+
+Evidencia: `/private/tmp/camisetas-motion-verification.xcresult` (74 + 4), `/private/tmp/camisetas-motion-final.xcresult` (74 + 1) y `match-natural-motion-2026-09-07.md`.
+
 ## Incremento Liga Argentina 2026 — 2026-09-07
 
 - [x] Los 30 clubes oficiales LPF 2026 existen una sola vez en `CAMI_DATA.teams["arg"]`.
@@ -276,3 +290,18 @@ Próximo paso: **SwiftUI Engineer / Product Manager**
 - Agregar assets faltantes (fuentes, sonidos, iconos)
 - Generar proyecto Xcode `.xcodeproj` con targets correctos
 - Correr tests con `Cmd+U`
+
+## Corrección de carreras y fluidez — 2026-09-07
+
+- [x] 76 unitarios y 5 XCUITests focales, 81 pruebas sin fallos.
+- [x] Velocidad de curva y de posiciones resueltas, 27 partidos deterministas; sin picos de separación fuera del límite del test.
+- [x] Continuidad de poses, gait, balón, contactos e impacto; 22 jugadores y límites del campo.
+- [x] Reloj monotónico, pausas, seek y fotogramas demorados; UI real en segundo plano cinco segundos y reanudación.
+- [x] Tiros libres y penales: preparación, remate, resultado y marcador sin goles anticipados; equivalencia con Reduce Motion.
+- [x] Tanda: impacto y cierre. Partido completo MEX–RSA: navegación, 110 s de juego, cierre y resultado persistido en la zona (129.501 s de test total).
+- [x] Build Release para Simulator y `git diff --check` correctos.
+- [x] Video real y revisión de secuencia de movimiento en iPad Pro 13 M5; muestra de cadencia de Canvas sin otras pruebas/compilación.
+- [ ] FPS/GPU y temperatura en iPad físico; validación perceptual con Mati/Basti.
+- [ ] Gaps previos: VoiceOver manual y flujo completo de avance de eliminación directa, no añadidos por este cambio.
+
+Reporte: `.project/match-running-fluidity-2026-09-07.md`. Resultado verificable: `/private/tmp/camisetas-running-fluidity-final.xcresult`. Esto no autoriza publicación ni submit.

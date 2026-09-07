@@ -236,6 +236,35 @@ final class CamisetasBastiUITests: XCTestCase {
     }
 
     @MainActor
+    func testMatchPlaybackAdvancesAndResumesWithoutBackgroundCatchUp() {
+        app.terminate()
+        XCUIDevice.shared.orientation = .landscapeLeft
+        app.launchArguments = ["--match-preview"]
+        app.launchEnvironment = ["MATCH_PREVIEW_PROGRESS": "0.15"]
+        app.launch()
+        let event = app.descendants(matching: .any).matching(identifier: "match.event").firstMatch
+        XCTAssertTrue(event.waitForExistence(timeout: 10))
+        let initial = event.label
+        let advances = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label != %@", initial), object: event)
+        XCTAssertEqual(XCTWaiter.wait(for: [advances], timeout: 5), .completed)
+        func minute(_ label: String) -> Int {
+            label.components(separatedBy: CharacterSet.decimalDigits.inverted).compactMap(Int.init).first ?? -1
+        }
+        let before = minute(event.label)
+        XCUIDevice.shared.press(.home)
+        // This is elapsed background time, not accelerated game time.
+        let background = expectation(description: "Background interval")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5) { background.fulfill() }
+        wait(for: [background], timeout: 7)
+        app.activate()
+        XCTAssertTrue(event.waitForExistence(timeout: 5))
+        XCTAssertLessThanOrEqual(minute(event.label) - before, 3, "Background time must not advance the match")
+        let resumed = event.label
+        let continues = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label != %@", resumed), object: event)
+        XCTAssertEqual(XCTWaiter.wait(for: [continues], timeout: 5), .completed)
+    }
+
+    @MainActor
     func testSetPiecesShowPreparationShotAndOutcomeWithoutEarlyGoals() {
         app.terminate()
         XCUIDevice.shared.orientation = .landscapeLeft
