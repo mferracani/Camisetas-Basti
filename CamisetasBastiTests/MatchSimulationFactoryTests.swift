@@ -697,6 +697,46 @@ final class WorldCupFixtureTests: XCTestCase {
     }
 }
 
+final class ArgentinaTournamentTests: XCTestCase {
+    private let officialLPF2026TeamIds: Set<String> = [
+        "aldosivi", "argentinos", "atletico_tucuman", "banfield", "barracas_central",
+        "belgrano", "boca", "central_cordoba", "defensa_justicia", "riestra",
+        "estudiantes_rc", "estu", "gimnasia_lp", "gimnasia_mendoza", "hura",
+        "inde", "independiente_rivadavia", "instituto", "lanus", "newells",
+        "platense", "racing", "river", "rosa", "sanlo", "sarmiento",
+        "talleres", "tigre", "union", "velez"
+    ]
+
+    func testArgentinaCatalogContainsEveryLPF2026ClubExactlyOnce() {
+        let teams = CAMI_DATA.teams(for: "arg")
+
+        XCTAssertEqual(teams.count, 30)
+        XCTAssertEqual(Set(teams.map(\.id)), officialLPF2026TeamIds)
+        XCTAssertEqual(Set(teams.map(\.id)).count, teams.count)
+    }
+
+    func testArgentinaBracketSeedsAllThirtyClubs() {
+        let teams = CAMI_DATA.teams(for: "arg")
+        let seedPlan = TournamentSeedPlan(teams: teams)
+
+        XCTAssertTrue(seedPlan.usesRoundOf32)
+        XCTAssertEqual(Set(seedPlan.seededTeamIds), officialLPF2026TeamIds)
+        XCTAssertEqual(seedPlan.seededTeamIds.count, 30)
+        XCTAssertEqual(seedPlan.openingSlots.count, 32)
+        XCTAssertEqual(seedPlan.openingSlots.filter { $0 == nil }.count, 2)
+    }
+
+    func testSixteenTeamLeagueKeepsExistingBracketShape() {
+        let teams = Array(CAMI_DATA.teams(for: "eng").prefix(16))
+        let seedPlan = TournamentSeedPlan(teams: teams)
+
+        XCTAssertFalse(seedPlan.usesRoundOf32)
+        XCTAssertEqual(seedPlan.seededTeamIds.count, 16)
+        XCTAssertEqual(seedPlan.openingSlots.count, 16)
+        XCTAssertFalse(seedPlan.openingSlots.contains { $0 == nil })
+    }
+}
+
 private struct SeededGenerator: RandomNumberGenerator {
     private var state: UInt64
 

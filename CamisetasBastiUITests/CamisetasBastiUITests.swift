@@ -120,6 +120,49 @@ final class CamisetasBastiUITests: XCTestCase {
     // MARK: - Tournament match playback
 
     @MainActor
+    func testArgentinaTournamentShowsAllThirtyLPFTeams() {
+        XCUIDevice.shared.orientation = .landscapeLeft
+
+        let splashPrompt = app.staticTexts["TOCA PARA JUGAR"]
+        XCTAssertTrue(splashPrompt.waitForExistence(timeout: 10))
+        splashPrompt.tap()
+
+        let tournamentButton = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS %@", "SIMULAR TORNEO")
+        ).firstMatch
+        XCTAssertTrue(tournamentButton.waitForExistence(timeout: 10))
+        tournamentButton.tap()
+
+        let leaguePicker = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS %@", "MUNDIAL 2026")
+        ).firstMatch
+        XCTAssertTrue(leaguePicker.waitForExistence(timeout: 10))
+        leaguePicker.tap()
+
+        let argentinaOption = app.buttons["ARGENTINA"]
+        XCTAssertTrue(argentinaOption.waitForExistence(timeout: 5))
+        argentinaOption.tap()
+
+        XCTAssertTrue(app.staticTexts["RONDA DE 32"].firstMatch.waitForExistence(timeout: 10))
+        let expectedIds = [
+            "aldosivi", "argentinos", "atletico_tucuman", "banfield", "barracas_central",
+            "belgrano", "boca", "central_cordoba", "defensa_justicia", "riestra",
+            "estudiantes_rc", "estu", "gimnasia_lp", "gimnasia_mendoza", "hura",
+            "inde", "independiente_rivadavia", "instituto", "lanus", "newells",
+            "platense", "racing", "river", "rosa", "sanlo", "sarmiento",
+            "talleres", "tigre", "union", "velez"
+        ]
+        for teamId in expectedIds {
+            XCTAssertTrue(app.buttons["tournament.team.\(teamId)"].exists, "Missing \(teamId) from Argentina bracket")
+        }
+
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = "Liga Argentina - 30 equipos"
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+    }
+
+    @MainActor
     func testWorldCupMatchPlaysToCompletionAndSavesGroupScore() throws {
         XCUIDevice.shared.orientation = .landscapeLeft
 

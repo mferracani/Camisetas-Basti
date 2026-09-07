@@ -1,5 +1,16 @@
 # QA Checklist — Camisetas Basti
 
+## Incremento Liga Argentina 2026 — 2026-09-07
+
+- [x] Los 30 clubes oficiales LPF 2026 existen una sola vez en `CAMI_DATA.teams["arg"]`.
+- [x] Los 30 clubes quedan sembrados en una llave de 32 plazas con dos pases libres.
+- [x] Las ligas de 16 equipos mantienen el formato existente.
+- [x] XCUITest abre `SIMULAR TORNEO`, selecciona Argentina y encuentra los 30 clubes.
+- [x] Suite unitaria completa: 67 tests, 0 fallos.
+- [x] Build Release para iOS Simulator correcto.
+- [ ] Smoke manual en iPad físico.
+
+
 ## Incremento: camisetas y pelota parada — 2026-09-07
 
 - [x] 139 equipos jugables / 278 kits cubiertos por selección explícita; todas las combinaciones conservan un kit original, sin recolor sintético.

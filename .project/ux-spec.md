@@ -1,5 +1,12 @@
 # UX Spec — Torneo simulado
 
+## Incremento Liga Argentina 2026
+
+- Al elegir `ARGENTINA`, la llave suma una columna exterior `RONDA DE 32` en cada lado.
+- Los 30 clubes se distribuyen entre 32 plazas y dos plazas se muestran como `LIBRE`.
+- La llave admite desplazamiento horizontal para preservar escudos y blancos táctiles legibles en iPad.
+- `MUNDIAL 2026` y las ligas de hasta 16 equipos conservan su presentación actual.
+
 ## Iteración solicitada: camisetas y pelota parada (2026-09-07)
 
 Mati validó la presentación del partido y pidió fidelidad de camisetas, tiros libres y penales. Extensión de los microeventos existentes, sin pantalla ni interacción nueva:

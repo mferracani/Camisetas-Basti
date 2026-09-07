@@ -385,44 +385,54 @@ private struct TournamentBracketBoard: View {
 
     var body: some View {
         ZStack {
-            HStack(spacing: 8) {
-                bracketColumn(title: "OCTAVOS", matches: $bracket.roundOf16, round: .roundOf16)
-                connectorColumn(lines: 8)
-                bracketColumn(title: "CUARTOS", matches: $bracket.quarterFinals, round: .quarterFinals)
-                connectorColumn(lines: 4)
-                bracketColumn(title: "SEMIS", matches: $bracket.semiFinals, round: .semiFinals)
-                connectorColumn(lines: 2)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    if bracket.usesRoundOf32 {
+                        bracketColumn(title: "RONDA DE 32", matches: $bracket.roundOf32, round: .roundOf32)
+                        connectorColumn(lines: 16)
+                    }
+                    bracketColumn(title: "OCTAVOS", matches: $bracket.roundOf16, round: .roundOf16)
+                    connectorColumn(lines: 8)
+                    bracketColumn(title: "CUARTOS", matches: $bracket.quarterFinals, round: .quarterFinals)
+                    connectorColumn(lines: 4)
+                    bracketColumn(title: "SEMIS", matches: $bracket.semiFinals, round: .semiFinals)
+                    connectorColumn(lines: 2)
 
-                VStack(spacing: 18) {
-                    Text(title)
-                        .font(.custom("Nunito-Black", size: 22))
-                        .foregroundColor(.white)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
+                    VStack(spacing: 18) {
+                        Text(title)
+                            .font(.custom("Nunito-Black", size: 22))
+                            .foregroundColor(.white)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
 
-                    Image(systemName: "trophy.fill")
-                        .font(.system(size: 70, weight: .bold))
-                        .foregroundColor(bracket.champion == nil ? Color(hex: "#D9DEE6") : Color(hex: "#FFC93C"))
-                        .shadow(color: Color.black.opacity(0.28), radius: 8, x: 0, y: 8)
+                        Image(systemName: "trophy.fill")
+                            .font(.system(size: 70, weight: .bold))
+                            .foregroundColor(bracket.champion == nil ? Color(hex: "#D9DEE6") : Color(hex: "#FFC93C"))
+                            .shadow(color: Color.black.opacity(0.28), radius: 8, x: 0, y: 8)
 
-                    finalMatch
+                        finalMatch
+                    }
+                    .frame(width: min(max(size.width * 0.13, 142), 184))
+
+                    connectorColumn(lines: 2)
+                    bracketColumn(title: "SEMIS", matches: $bracket.semiFinalsRight, round: .semiFinalsRight)
+                    connectorColumn(lines: 4)
+                    bracketColumn(title: "CUARTOS", matches: $bracket.quarterFinalsRight, round: .quarterFinalsRight)
+                    connectorColumn(lines: 8)
+                    bracketColumn(title: "OCTAVOS", matches: $bracket.roundOf16Right, round: .roundOf16Right)
+                    if bracket.usesRoundOf32 {
+                        connectorColumn(lines: 16)
+                        bracketColumn(title: "RONDA DE 32", matches: $bracket.roundOf32Right, round: .roundOf32Right)
+                    }
                 }
-                .frame(width: min(max(size.width * 0.13, 142), 184))
-
-                connectorColumn(lines: 2)
-                bracketColumn(title: "SEMIS", matches: $bracket.semiFinalsRight, round: .semiFinalsRight)
-                connectorColumn(lines: 4)
-                bracketColumn(title: "CUARTOS", matches: $bracket.quarterFinalsRight, round: .quarterFinalsRight)
-                connectorColumn(lines: 8)
-                bracketColumn(title: "OCTAVOS", matches: $bracket.roundOf16Right, round: .roundOf16Right)
+                .padding(18)
+                .background(Color.white.opacity(0.06))
+                .cornerRadius(24)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 24)
+                        .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                )
             }
-            .padding(18)
-            .background(Color.white.opacity(0.06))
-            .cornerRadius(24)
-            .overlay(
-                RoundedRectangle(cornerRadius: 24)
-                    .stroke(Color.white.opacity(0.12), lineWidth: 1)
-            )
 
             if let champion = bracket.champion {
                 ChampionGloryOverlay(champion: champion)
@@ -668,6 +678,7 @@ private struct BracketSlot: View {
         }
         .buttonStyle(.plain)
         .disabled(team == nil)
+        .accessibilityIdentifier(team.map { "tournament.team.\($0.id)" } ?? "tournament.bye")
     }
 }
 
@@ -2469,8 +2480,41 @@ private enum TournamentPlayMode: String {
     }
 }
 
+struct TournamentSeedPlan {
+    let openingSlots: [Team?]
+    let usesRoundOf32: Bool
+
+    var seededTeamIds: [String] {
+        openingSlots.compactMap { $0?.id }
+    }
+
+    init(teams: [Team]) {
+        let supportedTeams = Array(teams.prefix(32))
+        usesRoundOf32 = supportedTeams.count > 16
+
+        if usesRoundOf32 {
+            let midpoint = min(15, supportedTeams.count)
+            let leftTeams = Array(supportedTeams.prefix(midpoint))
+            let rightTeams = Array(supportedTeams.dropFirst(midpoint))
+            openingSlots = Self.sideSlots(for: leftTeams) + Self.sideSlots(for: rightTeams)
+        } else {
+            openingSlots = supportedTeams.map(Optional.some)
+                + Array(repeating: nil, count: max(0, 16 - supportedTeams.count))
+        }
+    }
+
+    private static func sideSlots(for teams: [Team]) -> [Team?] {
+        var slots = teams.map(Optional.some)
+        if slots.count < 16 {
+            slots.insert(nil, at: min(1, slots.count))
+        }
+        while slots.count < 16 { slots.append(nil) }
+        return Array(slots.prefix(16))
+    }
+}
+
 private enum TournamentRound: String {
-    case roundOf16, roundOf16Right, quarterFinals, quarterFinalsRight, semiFinals, semiFinalsRight, final
+    case roundOf32, roundOf32Right, roundOf16, roundOf16Right, quarterFinals, quarterFinalsRight, semiFinals, semiFinalsRight, final
 }
 
 private struct TournamentMatch: Equatable {
@@ -2535,6 +2579,8 @@ enum MatchChanceOutcome: Equatable {
 }
 
 private struct TournamentBracket: Equatable {
+    var roundOf32: [TournamentMatch]
+    var roundOf32Right: [TournamentMatch]
     var roundOf16: [TournamentMatch]
     var roundOf16Right: [TournamentMatch]
     var quarterFinals: [TournamentMatch]
@@ -2544,7 +2590,13 @@ private struct TournamentBracket: Equatable {
     var final: TournamentMatch
     var champion: Team?
 
+    var usesRoundOf32: Bool {
+        !roundOf32.isEmpty || !roundOf32Right.isEmpty
+    }
+
     static let empty = TournamentBracket(
+        roundOf32: [],
+        roundOf32Right: [],
         roundOf16: Array(repeating: TournamentMatch(), count: 4),
         roundOf16Right: Array(repeating: TournamentMatch(), count: 4),
         quarterFinals: Array(repeating: TournamentMatch(), count: 2),
@@ -2556,14 +2608,19 @@ private struct TournamentBracket: Equatable {
     )
 
     init(seedTeams teams: [Team]) {
-        var slots = Array(teams.prefix(16)).map(Optional.some)
-        while slots.count < 16 { slots.append(nil) }
+        let plan = TournamentSeedPlan(teams: teams)
+        let slots = plan.openingSlots
 
-        roundOf16 = stride(from: 0, to: 8, by: 2).map {
-            TournamentMatch(home: slots[$0], away: slots[$0 + 1])
-        }
-        roundOf16Right = stride(from: 8, to: 16, by: 2).map {
-            TournamentMatch(home: slots[$0], away: slots[$0 + 1])
+        if plan.usesRoundOf32 {
+            roundOf32 = Self.matches(from: Array(slots.prefix(16)))
+            roundOf32Right = Self.matches(from: Array(slots.dropFirst(16).prefix(16)))
+            roundOf16 = Array(repeating: TournamentMatch(), count: 4)
+            roundOf16Right = Array(repeating: TournamentMatch(), count: 4)
+        } else {
+            roundOf32 = []
+            roundOf32Right = []
+            roundOf16 = Self.matches(from: Array(slots.prefix(8)))
+            roundOf16Right = Self.matches(from: Array(slots.dropFirst(8).prefix(8)))
         }
         quarterFinals = Array(repeating: TournamentMatch(), count: 2)
         quarterFinalsRight = Array(repeating: TournamentMatch(), count: 2)
@@ -2576,6 +2633,8 @@ private struct TournamentBracket: Equatable {
     }
 
     private init(
+        roundOf32: [TournamentMatch],
+        roundOf32Right: [TournamentMatch],
         roundOf16: [TournamentMatch],
         roundOf16Right: [TournamentMatch],
         quarterFinals: [TournamentMatch],
@@ -2585,6 +2644,8 @@ private struct TournamentBracket: Equatable {
         final: TournamentMatch,
         champion: Team?
     ) {
+        self.roundOf32 = roundOf32
+        self.roundOf32Right = roundOf32Right
         self.roundOf16 = roundOf16
         self.roundOf16Right = roundOf16Right
         self.quarterFinals = quarterFinals
@@ -2595,8 +2656,24 @@ private struct TournamentBracket: Equatable {
         self.champion = champion
     }
 
+    private static func matches(from slots: [Team?]) -> [TournamentMatch] {
+        stride(from: 0, to: slots.count, by: 2).map {
+            TournamentMatch(home: slots[$0], away: slots[$0 + 1])
+        }
+    }
+
     mutating func advance(round: TournamentRound, matchIndex: Int, slot: MatchSide) {
         switch round {
+        case .roundOf32:
+            guard let winner = selectedTeam(in: roundOf32[matchIndex], slot: slot) else { return }
+            roundOf32[matchIndex].winner = winner
+            roundOf32[matchIndex].result = nil
+            setRoundOf16Winner(winner, sourceIndex: matchIndex, rightSide: false)
+        case .roundOf32Right:
+            guard let winner = selectedTeam(in: roundOf32Right[matchIndex], slot: slot) else { return }
+            roundOf32Right[matchIndex].winner = winner
+            roundOf32Right[matchIndex].result = nil
+            setRoundOf16Winner(winner, sourceIndex: matchIndex, rightSide: true)
         case .roundOf16:
             guard let winner = selectedTeam(in: roundOf16[matchIndex], slot: slot) else { return }
             roundOf16[matchIndex].winner = winner
@@ -2643,6 +2720,16 @@ private struct TournamentBracket: Equatable {
 
     mutating func applySimulation(context: MatchSimulationContext, result: MatchSimulationResult) {
         switch context.round {
+        case .roundOf32:
+            guard roundOf32.indices.contains(context.matchIndex) else { return }
+            roundOf32[context.matchIndex].winner = result.winner
+            roundOf32[context.matchIndex].result = result
+            setRoundOf16Winner(result.winner, sourceIndex: context.matchIndex, rightSide: false)
+        case .roundOf32Right:
+            guard roundOf32Right.indices.contains(context.matchIndex) else { return }
+            roundOf32Right[context.matchIndex].winner = result.winner
+            roundOf32Right[context.matchIndex].result = result
+            setRoundOf16Winner(result.winner, sourceIndex: context.matchIndex, rightSide: true)
         case .roundOf16:
             guard roundOf16.indices.contains(context.matchIndex) else { return }
             roundOf16[context.matchIndex].winner = result.winner
@@ -2693,6 +2780,8 @@ private struct TournamentBracket: Equatable {
 
     private func firstPlayableMatchWithoutResult() -> (round: TournamentRound, matchIndex: Int)? {
         let groups: [(TournamentRound, [TournamentMatch])] = [
+            (.roundOf32, roundOf32),
+            (.roundOf32Right, roundOf32Right),
             (.roundOf16, roundOf16),
             (.roundOf16Right, roundOf16Right),
             (.quarterFinals, quarterFinals),
@@ -2707,6 +2796,21 @@ private struct TournamentBracket: Equatable {
             }
         }
         return nil
+    }
+
+    private mutating func setRoundOf16Winner(_ winner: Team, sourceIndex: Int, rightSide: Bool) {
+        let targetIndex = sourceIndex / 2
+        let isHome = sourceIndex % 2 == 0
+        if rightSide {
+            if isHome { roundOf16Right[targetIndex].home = winner } else { roundOf16Right[targetIndex].away = winner }
+            roundOf16Right[targetIndex].winner = nil
+            roundOf16Right[targetIndex].result = nil
+        } else {
+            if isHome { roundOf16[targetIndex].home = winner } else { roundOf16[targetIndex].away = winner }
+            roundOf16[targetIndex].winner = nil
+            roundOf16[targetIndex].result = nil
+        }
+        clearFromRoundOf32Change(rightSide: rightSide)
     }
 
     private mutating func setQuarterWinner(_ winner: Team, sourceIndex: Int, rightSide: Bool) {
@@ -2754,6 +2858,21 @@ private struct TournamentBracket: Equatable {
         champion = nil
     }
 
+    private mutating func clearFromRoundOf32Change(rightSide: Bool) {
+        if rightSide {
+            quarterFinalsRight = Array(repeating: TournamentMatch(), count: 2)
+            semiFinalsRight = Array(repeating: TournamentMatch(), count: 1)
+            final.away = nil
+        } else {
+            quarterFinals = Array(repeating: TournamentMatch(), count: 2)
+            semiFinals = Array(repeating: TournamentMatch(), count: 1)
+            final.home = nil
+        }
+        final.winner = nil
+        final.result = nil
+        champion = nil
+    }
+
     private func selectedTeam(in match: TournamentMatch, slot: MatchSide) -> Team? {
         switch slot {
         case .home: return match.home
@@ -2762,6 +2881,12 @@ private struct TournamentBracket: Equatable {
     }
 
     private mutating func autoAdvanceByes() {
+        if usesRoundOf32 {
+            autoAdvanceByes(in: roundOf32, round: .roundOf32)
+            autoAdvanceByes(in: roundOf32Right, round: .roundOf32Right)
+            return
+        }
+
         for index in roundOf16.indices {
             if roundOf16[index].home != nil && roundOf16[index].away == nil {
                 advance(round: .roundOf16, matchIndex: index, slot: .home)
@@ -2774,6 +2899,16 @@ private struct TournamentBracket: Equatable {
                 advance(round: .roundOf16Right, matchIndex: index, slot: .home)
             } else if roundOf16Right[index].home == nil && roundOf16Right[index].away != nil {
                 advance(round: .roundOf16Right, matchIndex: index, slot: .away)
+            }
+        }
+    }
+
+    private mutating func autoAdvanceByes(in matches: [TournamentMatch], round: TournamentRound) {
+        for index in matches.indices {
+            if matches[index].home != nil && matches[index].away == nil {
+                advance(round: round, matchIndex: index, slot: .home)
+            } else if matches[index].home == nil && matches[index].away != nil {
+                advance(round: round, matchIndex: index, slot: .away)
             }
         }
     }

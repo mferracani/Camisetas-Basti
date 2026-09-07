@@ -1,7 +1,7 @@
 # Project State
 
 ## Fase actual
-match-kits-set-pieces-verified
+liga-argentina-verified
 
 ## Gate status
 - [x] Gate 1: PRD aprobado
@@ -9,6 +9,7 @@ match-kits-set-pieces-verified
 - [x] Gate 3: Build completo
 
 ## Decisiones tomadas
+- Liga Argentina 2026 ampliada a los 30 clubes de Primera División publicados por LPF/AFA. En `SIMULAR TORNEO` usa una llave de 32 plazas, con dos pases libres distribuidos entre ambos lados; las ligas de hasta 16 equipos conservan su llave anterior. Se agregaron 14 clubes al catálogo argentino, manteniendo funcionamiento offline y camisetas estilizadas. Verificación: 67 tests unitarios, un XCUITest focal y build Release correctos. Detalle en `.project/liga-argentina-2026.md`.
 - Verificación del incremento camisetas/pelota parada: 139 equipos jugables y 278 kits con selección explícita sin recolor sintético; tiros libres con barrera y penales dentro del partido; mismo kit en tanda final. 64 unit tests y cuatro XCUITests focales pasaron, builds Debug/Release correctos, sin publicar. Fuentes/gaps de camisetas en `.project/kit-audit-2026-09-07.md`; no implica autenticación de temporada de todas las ediciones.
 - Iteración siguiente 2026-09-07: Mati aprobó la presentación anterior ("quedo muy bien") y pidió verificar colores/diseños reales de todos los equipos y simular tiros libres y penales. Se continúa dentro del modal y timeline aprobados, sin controles nuevos, física 3D ni cambios de resultado/duración. La fidelidad se verifica sobre las ediciones existentes; una actualización de temporada requiere definir la edición, porque el catálogo mezcla assets sin procedencia.
 - Iteración 2026-09-07 solicitada por Mati e implementada: jugadores articulados, movimiento sin frenadas sincronizadas, pelota continua con sombra/altura, estadio y festejos coordinados. Se reutilizaron los gates del flujo aprobado (90–110 segundos, 22 jugadores, cámara fija, offline).
@@ -40,6 +41,7 @@ match-kits-set-pieces-verified
 - Los releases ahora deben usar `scripts/archive-testflight.sh`, que exige `main` limpio y sincronizado y valida los marcadores funcionales del Mundial antes de archivar.
 
 ## Handoffs pendientes
+- Liga Argentina implementada y verificada en `codex/feat-liga-argentina`; pendiente revisión de Mati y decisión de commit/publicación. Replicar el formato oficial de dos zonas del Apertura/Clausura queda fuera de este incremento: la pantalla mantiene eliminación directa.
 - Incremento camisetas/pelota parada implementado y verificado localmente; siguiente paso: revisión visual de Mati y decisión sobre temporadas sin referencia/publicación. Video real de dos jugadas y detalles en `.project/match-kits-set-pieces-2026-09-07.md`. No requiere repetir gates del mismo alcance; commit/push sólo cuando se soliciten.
 - Iteración de presentación 2026-09-07: cambios locales verificados en `codex/feat-realistic-match-simulation`, pendientes de revisión del usuario y publicación; sin commit/push/merge. Vista Debug `--match-preview` para revisar en Simulator. Documentación: `.project/match-experience-2026-09-07.md`.
 - Mejora de simulacion v2 publicada en `codex/feat-realistic-match-simulation`; pendiente revision/merge por el usuario. No se hizo merge ni deploy.

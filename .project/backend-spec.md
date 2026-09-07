@@ -1,5 +1,12 @@
 # Backend Spec — Camisetas Basti
 
+## Contrato incremental: Liga Argentina 2026
+
+- `CAMI_DATA.teams["arg"]` contiene los 30 clubes oficiales LPF 2026, con IDs únicos y dos kits locales por club.
+- `TournamentSeedPlan` conserva 16 plazas para catálogos de hasta 16 equipos y genera 32 plazas para catálogos mayores.
+- Para 30 equipos inserta dos `nil` determinísticos, uno en cada mitad, que `TournamentBracket` resuelve como pases libres.
+- No se agrega red, backend, persistencia nueva ni dependencia externa.
+
 ## Contrato incremental: pelota parada (2026-09-07)
 
 Extensión efímera de `MatchSimulation`, sin migración ni persistencia nueva. `MatchSetPiece` distingue `freeKick` y `penalty`; `MatchBeat.setPiece` es opcional y conserva la firma de `.shot(shooter:outcome:)`. `MatchAction` agrega `.foul(carrier:defender:)` y `.setPieceSetup(taker:kind:)`. Los goles de pelota parada reemplazan oportunidades existentes, no se suman al resultado calculado. El penal no admite bloqueo de un defensor. La presentación congela la pelota durante preparación, y comparte el umbral de impacto 0.78 con marcador y relato. La selección de camisetas usa sólo kits originales del catálogo, nunca colores sintéticos.
