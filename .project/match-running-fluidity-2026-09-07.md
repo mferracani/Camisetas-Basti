@@ -39,7 +39,11 @@ Las métricas de Canvas son cadencia de callbacks y tiempo de CPU del dibujante,
 
 ## Git / siguiente rol
 
-Worktree `.worktrees/natural-motion`, rama `codex/feat-natural-match-motion`, base `36cd5b6`. Sin commit ni push de esta corrección. Se preserva el `AGENTS.md` local modificado del checkout original. Siguiente rol: revisión de Mati y QA en dispositivo antes de publicar. Commit sugerido: `feat: improve match motion and pacing`.
+Mati solicitó commit, push de todos los cambios pendientes y merge. Código de motion guardado en `35ff0eb` (`feat: improve match motion and pacing`), sobre la Liga Argentina `36cd5b6`. El cambio pendiente de `AGENTS.md` se conservó en un commit separado (`9831774`) y se integró mediante `9853908`. Ese SHA quedó publicado en `main` y en las ramas de motion/simulación, comprobado con `git ls-remote`; la rama de Liga Argentina también está publicada. No hubo conflictos ni force-push.
+
+Revalidación previa al merge: 76 unitarios sin fallos (`/private/tmp/camisetas-premerge-20260907-unit.xcresult`) y build Release para Simulator correcto (`/private/tmp/camisetas-premerge-20260907-release.log`). El merge sólo añadió `AGENTS.md` al código probado; los cinco XCUITests citados arriba corresponden a la verificación completa anterior de ese mismo código, no a una nueva ejecución durante la integración.
+
+Siguiente rol: QA en iPad físico y revisión perceptual con Mati/Basti antes de distribuir. No se archivó ni subió un build a TestFlight. El estado vigente y las actualizaciones documentales posteriores al merge se registran en `.project/state.md`.
 
 ## Revisión `ui-art-director`
 

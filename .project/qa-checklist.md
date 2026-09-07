@@ -1,5 +1,13 @@
 # QA Checklist — Camisetas Basti
 
+## Integración Git — 2026-09-07
+
+- [x] Reejecución pre-merge: 76 unitarios sin fallos, en `/private/tmp/camisetas-premerge-20260907-unit.xcresult`.
+- [x] Build Release para iOS Simulator correcto, en `/private/tmp/camisetas-premerge-20260907-release.log`.
+- [x] Verificación completa anterior: 76 unitarios y cinco XCUITests, 81/81, en `/private/tmp/camisetas-running-fluidity-final.xcresult`; no se presentan los cinco de UI como reejecutados durante el merge.
+- [x] Código probado en `35ff0eb`; el merge `9853908` sólo agrega `AGENTS.md`. Ramas publicadas, integración fast-forward a `main` y SHA remoto comprobado.
+- [ ] QA de dispositivo físico y gaps manuales indicados en la corrección de carreras. No se realizó archive ni upload a TestFlight.
+
 ## Incremento motion natural — 2026-09-07
 
 - [x] 74 unit tests, 0 fallos; incluye curvas/velocidad y zancada continuas, pausas reales, independencia del refresco y contacto del balón con el caché multijugada.

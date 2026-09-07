@@ -50,6 +50,6 @@ Video real (22 s, 1280×960, exportado a 60 fps sin acelerar): `/Users/mac017/Do
 
 ## Entrega / siguiente rol
 
-Rama `codex/feat-natural-match-motion`, worktree permanente `/Users/mac017/Documents/ChatGPT/Camisetas basti/.worktrees/natural-motion`, desde `36cd5b6`. El `AGENTS.md` local modificado del checkout original no se tocó. La carpeta `.worktrees/` se excluye sólo en `.git/info/exclude` local, sin cambiar el `.gitignore` versionado. Sin commit/push. Siguiente: revisión visual de Mati, QA en iPad físico y decisión de publicación; gates existentes reutilizados dentro del mismo alcance.
+Rama `codex/feat-natural-match-motion`, worktree permanente `/Users/mac017/Documents/ChatGPT/Camisetas basti/.worktrees/natural-motion`, desde `36cd5b6`. La carpeta `.worktrees/` se excluye sólo en `.git/info/exclude` local, sin cambiar el `.gitignore` versionado. Esta iteración recibió un ajuste posterior de carreras y reloj, documentado en `match-running-fluidity-2026-09-07.md`. Ambos incrementos se commitearon en `35ff0eb` y se integraron/publicaron en `main` mediante `9853908`, por pedido explícito de Mati. El `AGENTS.md` pendiente se conservó en `9831774` y también se integró. Siguiente: QA en iPad físico y revisión perceptual antes de distribuir; sin nuevo TestFlight.
 
-Commit sugerido: `feat: add natural player motion and grounded match animation`.
+Commit del código integrado: `35ff0eb` — `feat: improve match motion and pacing`.

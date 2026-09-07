@@ -1,7 +1,7 @@
 # Project State
 
 ## Fase actual
-match-running-fluidity-verified
+match-motion-merged-main
 
 ## Gate status
 - [x] Gate 1: PRD aprobado
@@ -9,6 +9,7 @@ match-running-fluidity-verified
 - [x] Gate 3: Build completo
 
 ## Decisiones tomadas
+- Integración Git solicitada por Mati el 2026-09-07: «commit y luego hace push de todos los cambios pendientes y merge». Liga Argentina (`36cd5b6`), motion/fluidez (`35ff0eb`) y reglas del proyecto (`9831774`) integrados y publicados en `main` mediante `9853908`, verificado con `git ls-remote`. Las tres ramas de trabajo también están publicadas. Revalidación previa al merge: 76 unitarios y build Release para Simulator correctos; los cinco XCUITests de la verificación final anterior siguen siendo la evidencia de UI del mismo código. Sin archive, upload ni cambios en TestFlight en esta operación.
 - Corrección de fluidez solicitada por Mati: la revisión anterior seguía mostrando carreras rápidas y trabadas. Se corrigieron destinos lejanos de receptores, carreras con aceleración-crucero-frenada y cruces anticipados; reloj único sincronizado con pantalla. Se usa el extremo pausado del rango aprobado: 110 s, sin velocidad aleatoria; Reduce Motion conserva 100 s y tanda 70 s. Se quitan intercambios redundantes entre ataques, sin cambiar los resultados ni su cantidad de goles. Verificado localmente: 76 unitarios, cinco XCUITests y Release correctos; velocidad real de posiciones en 27 semillas, cadencia de Canvas y video de Simulator. Evidencia y límites: `.project/match-running-fluidity-2026-09-07.md`.
 - Motion natural solicitado por Mati con `ui-art-director`: trayectorias cúbicas conectadas, zancada por distancia, perfil corporal, apoyos/articulaciones, pelota al pie, vuelo con impulso inicial, sombras y profundidad. Render objetivo 60 Hz sobre el mismo reloj; tanda sin springs, pateador articulado y aterrizaje. Base `36cd5b6` (30 clubes) preservada en `codex/feat-natural-match-motion`. Verificado: 74 unit tests, cuatro XCUITests focales, reejecución final de unitarios/tanda y build Release. Coreografía y evidencia: `.project/match-natural-motion-2026-09-07.md`. No altera resultados, duración ni persistencia.
 - Liga Argentina 2026 ampliada a los 30 clubes de Primera División publicados por LPF/AFA. En `SIMULAR TORNEO` usa una llave de 32 plazas, con dos pases libres distribuidos entre ambos lados; las ligas de hasta 16 equipos conservan su llave anterior. Se agregaron 14 clubes al catálogo argentino, manteniendo funcionamiento offline y camisetas estilizadas. Verificación: 67 tests unitarios, un XCUITest focal y build Release correctos. Detalle en `.project/liga-argentina-2026.md`.
@@ -43,13 +44,12 @@ match-running-fluidity-verified
 - Los releases ahora deben usar `scripts/archive-testflight.sh`, que exige `main` limpio y sincronizado y valida los marcadores funcionales del Mundial antes de archivar.
 
 ## Handoffs pendientes
-- Corrección de carreras terminada y verificada localmente en `codex/feat-natural-match-motion`, sin commit/push. Siguiente: revisión visual de Mati y prueba en iPad físico antes de publicar. El video muestra reproducción real, sin aceleración artificial. Gates reutilizados para el mismo flujo aprobado.
-- Motion natural implementado y verificado localmente en `/Users/mac017/Documents/ChatGPT/Camisetas basti/.worktrees/natural-motion`, rama `codex/feat-natural-match-motion`; pendiente revisión visual de Mati y prueba de FPS en iPad físico. Sin commit/push de este incremento. Siguiente rol: QA en dispositivo y decisión de publicación; no requiere repetir gates del mismo alcance.
-- Liga Argentina implementada, verificada y commiteada en `36cd5b6` (`codex/feat-liga-argentina`); incorporada como base de motion natural. Publicación pendiente. Replicar el formato oficial de dos zonas del Apertura/Clausura queda fuera de este incremento: la pantalla mantiene eliminación directa.
-- Incremento camisetas/pelota parada implementado y verificado localmente; siguiente paso: revisión visual de Mati y decisión sobre temporadas sin referencia/publicación. Video real de dos jugadas y detalles en `.project/match-kits-set-pieces-2026-09-07.md`. No requiere repetir gates del mismo alcance; commit/push sólo cuando se soliciten.
-- Iteración de presentación 2026-09-07: cambios locales verificados en `codex/feat-realistic-match-simulation`, pendientes de revisión del usuario y publicación; sin commit/push/merge. Vista Debug `--match-preview` para revisar en Simulator. Documentación: `.project/match-experience-2026-09-07.md`.
-- Mejora de simulacion v2 publicada en `codex/feat-realistic-match-simulation`; pendiente revision/merge por el usuario. No se hizo merge ni deploy.
+- Integración de código y push a `main` completados. Siguiente rol: QA en iPad físico (fluidez/GPU, temperatura y percepción con Mati/Basti) antes de una nueva distribución. Gates reutilizados para el mismo flujo; la autorización Git no implica un submit a TestFlight.
+- Gaps de alcance preservados: camisetas de temporadas sin referencia y formato oficial de dos zonas del Apertura/Clausura. La Liga Argentina incluye 30 clubes en eliminación directa; no se modificaron esas decisiones para el merge.
 - Antes del proximo TestFlight: smoke manual especifico con `Reduce Motion` y agregar cobertura XCUITest del flujo torneo → partido → cerrar → avance de llave.
+
+### Historial de distribución (sin nueva verificación en esta integración Git)
+
 - Build 2 subido a App Store Connect/TestFlight el 2026-06-20.
 - Build 3 archivado localmente el 2026-06-20 en `build/TestFlight/CamisetasBasti-build3.xcarchive`.
 - Build 11 subido a App Store Connect/TestFlight el 2026-07-16 desde commit `852ee85`; App Store Connect lo muestra `Finalizado` y `Lista para enviar`.
